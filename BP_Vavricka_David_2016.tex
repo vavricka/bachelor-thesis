@@ -28,19 +28,19 @@
 % ODTUD DAL VSE ZMENTE
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
 
-\department{Katedra \ldots (DOPLŇTE)}
-\title{Doplňte název práce}
-\authorGN{Doplňte Vaše křestní jméno/jména} %(křestní) jméno (jména) autora
-\authorFN{Doplňte Vaše příjmení} %příjmení autora
-\authorWithDegrees{Doplňte Vaše jméno a tituly} %jméno autora včetně současných akademických titulů
-\supervisor{Doplňte jméno vedoucího práce}
+\department{Katedra softwarového inženýrství}
+\title{Flexibilní logování pro embedded Linuxové systémy}
+\authorGN{David} %(křestní) jméno (jména) autora
+\authorFN{Vavřička} %příjmení autora
+\authorWithDegrees{David Vavřička} %jméno autora včetně současných akademických titulů
+\supervisor{Ing. Matěj Laitl}
 \acknowledgements{Doplňte, máte-li komu a za co děkovat. V~opačném případě úplně odstraňte tento příkaz.}
-\abstractCS{V~několika větách shrňte obsah a přínos této práce v~češtině. Po přečtení abstraktu by se čtenář měl mít čtenář dost informací pro rozhodnutí, zda chce Vaši práci číst.}
+\abstractCS{Doplňte}
 \abstractEN{Sem doplňte ekvivalent abstraktu Vaší práce v~angličtině.}
 \placeForDeclarationOfAuthenticity{V~Praze}
 \declarationOfAuthenticityOption{4} %volba Prohlášení (číslo 1-6)
-\keywordsCS{Nahraďte seznamem klíčových slov v češtině oddělených čárkou.}
-\keywordsEN{Nahraďte seznamem klíčových slov v angličtině oddělených čárkou.}
+\keywordsCS{logování, vestavěné systémy, logovací daemony, Linux, Rsyslog}
+\keywordsEN{logging, embedded systems, logging daemons, Linux, Rsyslog}
 
 \begin{document}
 
@@ -48,17 +48,49 @@
 % \newacronym{FIT}{FIT}{Fakulta informa{\v c}n{\' i}ch technologi{\' i}}
 
 \begin{introduction}
-	%sem napište úvod Vaší práce
+
+\subsection*{Set-top box}
+V současnosti je set-top box běžnou součástí českých domácností. Set-top box je embedded zařízení, obvykle postavěné na operačním systému Linux, které slouží k zprostředkování digitálního televizního signálu. TODO kecy o logování etc...
 \end{introduction}
 
-\chapter{Cíl práce}
 
-\chapter{Analýza a návrh}
+\section*{Technické požadavky}
+
+\subsection*{Snížení objemu logů}
+
+Je žádoucí snížit objem zasílaných logů (méně důležité logy s vysokou severitou) z důvodu přílišného zatížení sítě a serverových disků. Je nutno umožnit na dállku technikům dočasně zvýšit objem zasílaných logů na původní úroveň. Je také zapotřebá zajistit perzistenci konfigurace logování i po restartu zařízení.
+
+\subsection*{Rate-limiting odesílanýc zpráv}
+Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Bude umožněno nastavit jak dlouhodobé tak krátkodobé limity. V práci je nutno určit optimální hodnoty těchto limit.
+
+\subsection*{Post-processing zpráv}
+
+Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eleminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je konstantní. Řešení bude schopné tyto údaje ze těla zprávy extrahovat a nahradit jimi původní metadata.
+
+\chapter{Analýza postupu řešení}
+
+\section{Na straně serveru}
+Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího daemona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji. Je tedy nutno vhodně upravit set-top box. 
+\section{Na straně set-top boxu}
+\subsection{Rozšíření stávajícího řešení}
+Je tedy nutno problém řešit na straně set-top boxu kde původní řešení je postaveno na busy-box syslogd. Nabízí se možnost upravit fungování tím způsobem, aby se logy s nízkou severitou už na set-top boxu zahazovaly a pouze v případě potřeby bylo umožněné na dálku změnit konfiguraci daemona tak, aby se povolilo logování pro logy s nastavenou danou komponentou a severitou. To vše přes SHELL-ové API.
+Součástí zadání je ale i implementovat škrcení zpráv, aby nedocházelo k zahlcení linky. Takovou možnost prostý syslogd daemon neposkytuje a je proto nutno zvážit napsání vlastního daemona či nasazení jiného, vyspělejšího logovacího daemona.
+\subsection{Implementace vlastního logovacího daemonu}
+TODO popis proč je napsání log. daemona s danýma vlastnostma příliš pracné TODO OVER. A proto se spíše pokusím nalézt vhodný existující daemon.
+\subsection{Srovnání logovacích daemonů}
+TODO nabízí se tyto .... log. daemony
+rsyslog, syslog-ng,... etc porovnat, nakonec rozhodnutí pro Rsyslog, 
+
+\chapter{Návrh}
 
 \chapter{Realizace}
 
+\chapter{Testování}
+
+\chapter{Zhodnocení přínosů}
+
 \begin{conclusion}
-	%sem napište závěr Vaší práce
+
 \end{conclusion}
 
 \bibliographystyle{csn690}
@@ -193,7 +225,7 @@
 		.2 thesis\DTcomment{zdrojová forma práce ve formátu \LaTeX{}}.
 		.1 text\DTcomment{text práce}.
 		.2 thesis.pdf\DTcomment{text práce ve formátu PDF}.
-		.2 thesis.ps\DTcomment{text práce ve formátu PS}.
+		.2 BP\_Vavricka\_David\_2016.pdf\DTcomment{text práce ve formátu PDF}.
 	}
 \end{figure}
 
