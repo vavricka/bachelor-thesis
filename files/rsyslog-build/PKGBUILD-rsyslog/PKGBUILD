@@ -1,0 +1,22 @@
+# Maintainer: David Vavricka <vavricka.d@gmail.com>
+pkgbase=rsyslog
+pkgname=${pkgbase}
+pkgver=8.16.0
+pkgrel=1
+pkgdesc="An enhanced multi-threaded syslogd with a focus on security and reliability"
+arch=('armv7h' 'armv7sp')
+license='custom'
+
+depends=('zlib' 'libestr' 'libee' 'json-c')
+#maybe also 'liblogging' 'librelp' ?
+
+build() {
+	cd ${startdir}/${pkgbase}-${pkgver}
+	./configure --prefix=/mnt/hdd_1
+	make V=1
+}
+
+package() {
+	cd ${startdir}/${pkgname}-${pkgver}
+	make install DESTDIR=${pkgdir}
+}

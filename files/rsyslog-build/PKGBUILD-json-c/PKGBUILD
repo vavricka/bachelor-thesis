@@ -1,0 +1,19 @@
+# Maintainer: David Vavricka <vavricka.d@gmail.com>
+
+pkgbase=json-c
+pkgname=${pkgbase}
+pkgver=0.12
+pkgrel=1
+arch=('armv7h' 'armv7sp')
+license='custom'
+
+build() {
+	cd ${startdir}/${pkgbase}-${pkgver}
+	./configure --prefix=/mnt/hdd_1
+	make V=1
+}
+
+package() {
+	cd ${startdir}/${pkgname}-${pkgver}
+	make install DESTDIR=${pkgdir}
+}
