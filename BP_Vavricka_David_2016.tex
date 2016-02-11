@@ -49,41 +49,67 @@
 
 \begin{introduction}
 
-\subsection*{Set-top box}
-V současnosti je set-top box běžnou součástí českých domácností. Set-top box je embedded zařízení, obvykle postavěné na operačním systému Linux, které slouží k zprostředkování digitálního televizního signálu. TODO kecy o logování etc...
 \end{introduction}
 
+\chapter{Technické požadavky}
 
-\section*{Technické požadavky}
+\section{Základní technické požadavky}
 
-\subsection*{Snížení objemu logů}
+\subsection{Snížení objemu logů}
+Je žádoucí snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. Původní řešení všechny logy odesílalo na vzdálené servery. Nové řešení by mělo odesílat pouze důležité zprávy tedy zprávy s nízkou severitou.
 
-Je žádoucí snížit objem zasílaných logů (méně důležité logy s vysokou severitou) z důvodu přílišného zatížení sítě a serverových disků. Je nutno umožnit na dállku technikům dočasně zvýšit objem zasílaných logů na původní úroveň. Je také zapotřebá zajistit perzistenci konfigurace logování i po restartu zařízení.
+\subsection{Vzdálená konfigurace}
+Je nutno umožnit na dálku dočasně zvýšit objem zasílaných logů na původní úroveň. Je také zapotřebí zajistit perzistenci konfigurace logování i po restartu zařízení.
 
-\subsection*{Rate-limiting odesílanýc zpráv}
+\subsection{Rate-limiting odesílaných zpráv}
 Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Bude umožněno nastavit jak dlouhodobé tak krátkodobé limity. V práci je nutno určit optimální hodnoty těchto limit.
 
-\subsection*{Post-processing zpráv}
+\section{Rozšířené technické požadavky}
 
-Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eleminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je konstantní. Řešení bude schopné tyto údaje ze těla zprávy extrahovat a nahradit jimi původní metadata.
+\subsection{Post-processing zpráv}
+Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eliminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je konstantní. Řešení bude schopné tyto údaje ze těla zprávy extrahovat a nahradit jimi původní metadata.
 
-\chapter{Analýza postupu řešení}
+\subsection{Formátování zpráv}
+??
 
-\section{Na straně serveru}
-Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího daemona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji. Je tedy nutno vhodně upravit set-top box. 
-\section{Na straně set-top boxu}
-\subsection{Rozšíření stávajícího řešení}
+\subsection{Komprese zpráv}
+??
+
+\chapter{Analýza}
+
+\section{Volba postupu řešení}
+Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího daemona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji.
 Je tedy nutno problém řešit na straně set-top boxu kde původní řešení je postaveno na busy-box syslogd. Nabízí se možnost upravit fungování tím způsobem, aby se logy s nízkou severitou už na set-top boxu zahazovaly a pouze v případě potřeby bylo umožněné na dálku změnit konfiguraci daemona tak, aby se povolilo logování pro logy s nastavenou danou komponentou a severitou. To vše přes SHELL-ové API.
 Součástí zadání je ale i implementovat škrcení zpráv, aby nedocházelo k zahlcení linky. Takovou možnost prostý syslogd daemon neposkytuje a je proto nutno zvážit napsání vlastního daemona či nasazení jiného, vyspělejšího logovacího daemona.
-\subsection{Implementace vlastního logovacího daemonu}
-TODO popis proč je napsání log. daemona s danýma vlastnostma příliš pracné TODO OVER. A proto se spíše pokusím nalézt vhodný existující daemon.
-\subsection{Srovnání logovacích daemonů}
-TODO nabízí se tyto .... log. daemony
-rsyslog, syslog-ng,... etc porovnat, nakonec rozhodnutí pro Rsyslog, 
+
+\section{Srovnání logovacích daemonů}
+
+
+\subsection*{syslog-ng}
+Flexibilní logovací daemon zaměřený na centralizované a zabezpečené logování.Nevýhodou je, že pokročilé funkce jako například šifrování zpráv, bufferování nebo message-rate kontrola jsou dostupné pouze v komperční closed-source verzi.
+
+\subsection*{rsyslog}
+výhody a nevýhody rsyslogu...
+a zmínit se že rsyslog není jen daemon ale i tzv. log analyzér, tzn. umí zprávy různě formátovat, měnit prefixy, třídit je, etc.
+
+\subsection*{jiné implementace}
+vyjpsat další logovací daemony
+
+\subsection*{vlastní logovací daemon}
+Busy-box implementace syslogd daemonu má přes 1000 řádků v jazyku C. Námi požadovaný daemon by měl mít být ještě podstatně rozsáhlejší než syslogd a proto  .. TODO
+
+\section{Vzdálená konfigurace}
+
 
 \chapter{Návrh}
+TODO probrat ve ČT s Matějem.
 
 \chapter{Realizace}
+
+\section{Nasazení Rsyslog daemonu}
+
+\section{Shell API}
+
 
 \chapter{Testování}
 
