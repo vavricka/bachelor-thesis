@@ -19,10 +19,14 @@ cd to PKGBUILD-libestr & type "gu build"
 cd to PKGBUILD-libee & type "gu build"
 "gu install libee*.pkg.tar.xz"
 
-4/ Build & install json-c
-cd to PKGBUILD-json-c & type "gu build"
-"gu install json-c*.pkg.tar.xz"
+4/ Build & install libfastjson
+cd to PKGBUILD-libfastjson & type "gu build"
+"gu install libfastjson*.pkg.tar.xz"
 
-5/ Build & install rsyslog
+5/ Build & install liblogging
+cd to PKGBUILD-liblogging & type "gu build"
+"gu install liblogging*.pkg.tar.xz"
+
+6/ Build & install rsyslog
 cd to PKGBUILD-rsyslog & type "gu build"
 "gu install rsyslog*.pkg.tar.xz"

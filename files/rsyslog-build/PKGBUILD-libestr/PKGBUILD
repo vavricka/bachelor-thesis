@@ -1,4 +1,3 @@
-# Maintainer: David Vavricka <vavricka.d@gmail.com>
 pkgbase=libestr
 pkgname=${pkgbase}
 pkgver=0.1.10
@@ -8,7 +7,6 @@ license='custom'
 
 build() {
 cd ${startdir}/${pkgbase}-${pkgver}
-	#./configure --prefix=/usr
 	./configure --prefix=/mnt/hdd_1
 	make V=1
 }

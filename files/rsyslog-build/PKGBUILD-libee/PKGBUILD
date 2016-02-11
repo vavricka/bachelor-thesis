@@ -1,13 +1,14 @@
-# Maintainer: David Vavricka <vavricka.d@gmail.com>
 pkgbase=libee
 pkgname=${pkgbase}
 pkgver=0.4.1
 pkgrel=1
 arch=('armv7h' 'armv7sp')
 license='custom'
+depends=('libestr')
 
 build() {
 	cd ${startdir}/${pkgbase}-${pkgver}
+	PKG_CONFIG_PATH=/mnt/hdd_1/lib/pkgconfig
 	./configure --prefix=/mnt/hdd_1
 	make V=1
 }

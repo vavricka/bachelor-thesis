@@ -1,15 +1,14 @@
-# Maintainer: David Vavricka <vavricka.d@gmail.com>
-
-pkgbase=json-c
+pkgbase=liblogging
 pkgname=${pkgbase}
-pkgver=0.12
+pkgver=1.0.5
 pkgrel=1
 arch=('armv7h' 'armv7sp')
 license='custom'
 
 build() {
 	cd ${startdir}/${pkgbase}-${pkgver}
-	./configure --prefix=/mnt/hdd_1
+	PKG_CONFIG_PATH=/mnt/hdd_1/lib/pkgconfig
+	./configure --prefix=/mnt/hdd_1 --disable-journal
 	make V=1
 }
 
