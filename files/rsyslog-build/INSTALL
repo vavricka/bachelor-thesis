@@ -6,14 +6,14 @@ power on your machine with installed ubuntu lts 14.04
 install gu
 create a building work-space
 mkdir /mnt/hdd_1
-sudo ln -s /home/david/new-build-ws/mnt/hdd_1 /mnt/hdd_1
+sudo ln -s /PATH/TO/YOUR/WORKSPACE/mnt/hdd_1 /mnt/hdd_1
 
 2/ Install zlib (it's in repository)
 "gu install zlib"
 
 3/ Build & install libestr
 cd to PKGBUILD-libestr & type "gu build"
-"gu install libestr-0.1.10-1-armv7sp.pkg.tar.xz"
+"gu install libestr*.tar.xz"
 
 4/ Build & install libee
 cd to PKGBUILD-libee & type "gu build"

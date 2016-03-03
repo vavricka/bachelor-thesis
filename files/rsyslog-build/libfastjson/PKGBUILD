@@ -1,0 +1,24 @@
+pkgbase=libfastjson
+pkgname=${pkgbase}
+pkgver=master
+pkgrel=1
+arch=('armv7h' 'armv7sp')
+license='custom'
+source=${pkgname}-${pkgver}.tar.gz
+md5sums=('SKIP')
+
+build() {
+	cd ${pkgname}-${pkgver}
+	PKG_CONFIG_PATH=/mnt/hdd_1/lib/pkgconfig
+	#export ACLOCAL_PATH=/home/david/.scratchbox2/new-build-ws/share/aclocal
+	export ACLOCAL_PATH=$(dirname $(dirname $(which libtool)))/share/aclocal
+
+	sh autogen.sh #|| bash
+	./configure --prefix=/mnt/hdd_1
+	make V=1
+}
+
+package() {
+	cd ${pkgname}-${pkgver}
+	make install DESTDIR=${pkgdir}
+}

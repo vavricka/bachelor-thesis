@@ -8,6 +8,9 @@
 % \usepackage{amssymb} %additional math symbols
 \usepackage{dirtree} %directory tree visualisation
 
+\usepackage{listings}
+
+
 % % list of acronyms
 % \usepackage[acronym,nonumberlist,toc,numberedsection=autolabel]{glossaries}
 % \iflanguage{czech}{\renewcommand*{\acronymname}{Seznam pou{\v z}it{\' y}ch zkratek}}{}
@@ -41,36 +44,76 @@
 
 \chapter{Technické požadavky}
 Cílem je upravit logovací řešení pro set-top box EKT DID7006mTF~\cite{ekt7006} tak, aby splňovalo technické požadavky popsané v této kapitole. Řešení musí fungovat a být otestováno na zmíněném modelu set-top boxu a pokud možno by mělo být přenositelné i na jiné typy set-top boxů.
-Požadavky jsou rozděleny na základní a rozšířené. Rozšířené požadavky není nutno implementovat. V takovém případě je ale nutné zdůvodnit proč.
+Požadavky jsou rozděleny na základní a rozšířené. Rozšířené požadavky není nutno implementovat.
+
 
 \section{Základní technické požadavky}
 
 \subsection{Snížení objemu logů}
-Je žádoucí snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. Původní řešení všechny logy odesílalo na vzdálené servery. Nové řešení by mělo odesílat pouze důležité zprávy tedy zprávy s nízkou severitou.
-
-TODO1
-probrat s Matějem: (už konkrétně specifikovat zadání) jaké severity a facility filtrovat (případně jiné podmínky)
+Je žádoucí umožnit snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. Původní řešení všechny logy odesílalo na vzdálené servery. Nové řešení by mělo odesílat pouze důležité zprávy, tedy zprávy s nízkou severitou.
 
 \subsection{Vzdálená konfigurace}
-Je nutno umožnit na dálku dočasně zvýšit objem zasílaných logů na původní úroveň. Je také zapotřebí zajistit perzistenci konfigurace logování i po restartu zařízení.
-
-TODO2
-jak má konkrétně to API vypadat, co má umět
+Technické řešení musí být schopno za běhu pomocí SHELL-ového API měnit minimální povolenou severitu zpráv pro jednotlivé komponenty a dále toto API musí mít výchozí severitu, která se použije pro komponenty ji nemají explicitně nastavenou. Takto změněné nastavení musí být perzistentní i po restartu STB. Výchozí nastavení se obnoví až po factory resetu. API navrhne dle své libovůle sám řešitel.
 
 \subsection{Rate-limiting odesílaných zpráv}
-Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Bude umožněno nastavit jak dlouhodobé tak krátkodobé limity. 
+Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Bude umožněno nastavit jak dlouhodobé tak krátkodobé limity. Naivní rate-limiting je i v existujícím řešení, řešitel navrhne výchozí nastavení nového řešení tak, aby přibližně odpovídalo současnému chování. 
 
-TODO3
-jaké by měly být ty limity
-jak jsou řešeny ty limity v současném řešení
+\subsection{Formát logů}
+Je nutno zachovat formát logů jako ho má původní řešení, aby se jednalo o drop-in replacement bez nutnosti jakkoli měnit konfiguraci serveru, který sbírá logy od set-top boxů.
+
+\subsection{Razítkování zpráv}
+Každé zprávě se musí přidat textový prefix if=N, kde N monotonicky roste s každou zprávou.  To slouží pro detekci ztracených zpráv. Id přeteče po 32 nebo 64 bitech, to záleží na rozhodnutí řešitele. Po rebootu STB id znovu začíná od 1.
+
+\subsection{Post-processing zpráv}
+Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eliminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je konstantní. Řešení bude schopné tyto údaje z těla zprávy extrahovat a nahradit jimi původní metadata. Tato pravidlo musí být možné definovat a měnit bez nutnosti nového sestavení softwaru. 
+Řešitel vytvoří pro ukázku 2 pravidla, která budou sloužit zadavateli jako šablony pro možná budoucí filtrovací pravidla.
+
+\subsubsection{Pravidlo pro filtrování zpráv pro dané komponenty}
+Zprávy s nastavenou severitou INFO a komponentou sld\_br je třeba změnit podle následujícího vzoru.
+
+\subsubsection*{Originální zpráva:}
+\begin{scriptsize}
+\begin{verbatim}
+2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 sld_br: id=559 
+:[stbhal.cpp:debug:520]: INFO: [94mDEBUG: InformationService:
+ Reading 'nangu.video.forcedScart': false[0m
+\end{verbatim}}
+\end{scriptsize}
+
+\subsubsection*{Upravená zpráva:}
+\begin{scriptsize}
+\begin{verbatim}
+2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 nangu-portal: [94m InformationService:
+ Reading 'nangu.video.forcedScart': false[0m
+\end{verbatim}}
+\end{scriptsize}
+
+\subsubsection{TODO další pravidla}
+doplnit v průběhu implementace pravidel
+
+\subsubsection{Převod severit}
+Aplikace na STB používají pro logování TODO-DOPLNIT formát logů. Problémem je, že tento formát není kompatibilní s dnes za standard považovaným syslog formátem. Zadavatel proto požaduje změnit severity zpráv podle následující tabulky.
+
+\begin{table}[ht]
+\centering
+	\caption{Převodní tabulka}	\begin{tabular}{|l|l|}\hline
+		Portal		& Syslog			\tabularnewline \hline \hline
+		ERROR: 1	& ERR			\tabularnewline \hline
+		WARN: 1		& WARN			\tabularnewline \hline
+		INFO: 1		& NOTICE			\tabularnewline \hline
+		DEBUG: 1	& INFO			\tabularnewline \hline
+		TRACE: 1	& DEBUG			\tabularnewline \hline
+	\end{tabular}
+\end{table}
 
 \section{Rozšířené technické požadavky}
 
-\subsection{Post-processing zpráv}
-Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eliminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je konstantní. Řešení bude schopné tyto údaje z těla zprávy extrahovat a nahradit jimi původní metadata.
-
 \subsection{Komprese zpráv}
 Bylo by vhodné zvážit pro a proti komprese zpráv. Vyplatí se ušetřená přenesená data oproti režiji spojené s kompresí a dekompresí zpráv?
+
+\subsection{Rozšíření C++ komponenty}
+Zadavatel na STB provozuje malého démona dmd napsaného v C++, který mimo jiné obsahuje minimalistický HTTP webserver. Dále v browseru běží Javascript aplikace (nangu.TV portál), která pomocí messagingu komunikuje s centrálním serverem. Tato Javascript aplikace ovšem nemůže přímo používat Shell API.
+Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplikaci řídit konfiguraci logování (viz bod Vzdálená konfigurace).
 
 \chapter{Analýza}
 
@@ -79,6 +122,8 @@ Bylo by vhodné zvážit pro a proti komprese zpráv. Vyplatí se ušetřená p�
 \subsection*{Nainstalovaný software}
 \subsection*{Gu}
 \subsection*{PKGBUILD}
+
+\section{Současné řešení}
 
 \section{Volba postupu řešení}
 Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího démona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji.
@@ -109,6 +154,38 @@ Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či 
 
 \section{Vzdálená konfigurace}
 Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za jeho běhu není možné měnit. Je pro to nutné napsat SHELL-ové API, které umožní na dálku přenastavit tento konfigurační soubor a restartovat rsyslog
+
+\subsection*{Shellové API - 1. způsob}
+
+\begin{scriptsize}
+\begin{verbatim}
+set_log_verbosity.sh [component] [severity]
+\end{verbatim}}
+\end{scriptsize}
+
+TODO rozepsat
+
+\subsection*{Shellové API - 2. způsob}
+
+
+\begin{scriptsize}
+\begin{verbatim}
+/etc/logging.conf
+\end{verbatim}}
+\end{scriptsize}
+
+\begin{scriptsize}
+\begin{verbatim}
+component1  = DEBUG
+componentXY = INFO
+...
+DEFAULT     = INFO
+\end{verbatim}}
+\end{scriptsize}
+
+TODO rozepsat
+
+
 
 \chapter{Realizace}
 
