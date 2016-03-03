@@ -46,14 +46,13 @@
 Cílem je upravit logovací řešení pro set-top box EKT DID7006mTF~\cite{ekt7006} tak, aby splňovalo technické požadavky popsané v této kapitole. Řešení musí fungovat a být otestováno na zmíněném modelu set-top boxu a pokud možno by mělo být přenositelné i na jiné typy set-top boxů.
 Požadavky jsou rozděleny na základní a rozšířené. Rozšířené požadavky není nutno implementovat.
 
-
 \section{Základní technické požadavky}
 
 \subsection{Snížení objemu logů}
-Je žádoucí umožnit snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. Původní řešení všechny logy odesílalo na vzdálené servery. Nové řešení by mělo odesílat pouze důležité zprávy, tedy zprávy s nízkou severitou.
+Je žádoucí umožnit snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. A to tak, že zadavatel bude schopen nadefinovat pro každou komponentu úroveň severity zpráv, od které mají být posílány na server. Výchozí nastavení dodá zadavetel.
 
 \subsection{Vzdálená konfigurace}
-Technické řešení musí být schopno za běhu pomocí SHELL-ového API měnit minimální povolenou severitu zpráv pro jednotlivé komponenty a dále toto API musí mít výchozí severitu, která se použije pro komponenty ji nemají explicitně nastavenou. Takto změněné nastavení musí být perzistentní i po restartu STB. Výchozí nastavení se obnoví až po factory resetu. API navrhne dle své libovůle sám řešitel.
+Technické řešení musí být schopno za běhu pomocí SHELL-ového API měnit minimální severitu zpráv pro jednotlivé komponenty a dále toto API musí umožnit nastavit výchozí severitu, která se použije pro komponenty ji nemají explicitně nastavenou. Takto změněné nastavení musí být perzistentní i po restartu STB. Výchozí nastavení se obnoví až po factory resetu. API navrhne dle své libovůle sám řešitel.
 
 \subsection{Rate-limiting odesílaných zpráv}
 Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Bude umožněno nastavit jak dlouhodobé tak krátkodobé limity. Naivní rate-limiting je i v existujícím řešení, řešitel navrhne výchozí nastavení nového řešení tak, aby přibližně odpovídalo současnému chování. 
@@ -62,56 +61,18 @@ Nové logovací řešení musí být schopné provádět rate-limiting odesílan
 Je nutno zachovat formát logů jako ho má původní řešení, aby se jednalo o drop-in replacement bez nutnosti jakkoli měnit konfiguraci serveru, který sbírá logy od set-top boxů.
 
 \subsection{Razítkování zpráv}
-Každé zprávě se musí přidat textový prefix if=N, kde N monotonicky roste s každou zprávou.  To slouží pro detekci ztracených zpráv. Id přeteče po 32 nebo 64 bitech, to záleží na rozhodnutí řešitele. Po rebootu STB id znovu začíná od 1.
+Každé zprávě se musí přidat textový prefix id=N, kde N monotonicky roste s každou zprávou.  To slouží pro detekci ztracených zpráv. Id přeteče po 32 nebo 64 bitech, to záleží na rozhodnutí řešitele. Po rebootu STB id znovu začíná od 1.
 
 \subsection{Post-processing zpráv}
-Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eliminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je konstantní. Řešení bude schopné tyto údaje z těla zprávy extrahovat a nahradit jimi původní metadata. Tato pravidlo musí být možné definovat a měnit bez nutnosti nového sestavení softwaru. 
-Řešitel vytvoří pro ukázku 2 pravidla, která budou sloužit zadavateli jako šablony pro možná budoucí filtrovací pravidla.
-
-\subsubsection{Pravidlo pro filtrování zpráv pro dané komponenty}
-Zprávy s nastavenou severitou INFO a komponentou sld\_br je třeba změnit podle následujícího vzoru.
-
-\subsubsection*{Originální zpráva:}
-\begin{scriptsize}
-\begin{verbatim}
-2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 sld_br: id=559 
-:[stbhal.cpp:debug:520]: INFO: [94mDEBUG: InformationService:
- Reading 'nangu.video.forcedScart': false[0m
-\end{verbatim}}
-\end{scriptsize}
-
-\subsubsection*{Upravená zpráva:}
-\begin{scriptsize}
-\begin{verbatim}
-2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 nangu-portal: [94m InformationService:
- Reading 'nangu.video.forcedScart': false[0m
-\end{verbatim}}
-\end{scriptsize}
-
-\subsubsection{TODO další pravidla}
-doplnit v průběhu implementace pravidel
-
-\subsubsection{Převod severit}
-Aplikace na STB používají pro logování TODO-DOPLNIT formát logů. Problémem je, že tento formát není kompatibilní s dnes za standard považovaným syslog formátem. Zadavatel proto požaduje změnit severity zpráv podle následující tabulky.
-
-\begin{table}[ht]
-\centering
-	\caption{Převodní tabulka}	\begin{tabular}{|l|l|}\hline
-		Portal		& Syslog			\tabularnewline \hline \hline
-		ERROR: 1	& ERR			\tabularnewline \hline
-		WARN: 1		& WARN			\tabularnewline \hline
-		INFO: 1		& NOTICE			\tabularnewline \hline
-		DEBUG: 1	& INFO			\tabularnewline \hline
-		TRACE: 1	& DEBUG			\tabularnewline \hline
-	\end{tabular}
-\end{table}
+Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eliminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je pro jednotlivé skupiny zpráv konstantní. Řešení bude schopné tyto údaje z těla zprávy extrahovat a nahradit jimi původní metadata. Tato pravidlo musí být možné definovat a měnit bez nutnosti nového sestavení softwaru. 
+Řešitel vytvoří pro ukázku 3 pravidla, která budou sloužit zadavateli jako šablony pro možná budoucí filtrovací pravidla. Tato pravidla jsou popsána v kapitole analýza.
 
 \section{Rozšířené technické požadavky}
 
 \subsection{Komprese zpráv}
 Bylo by vhodné zvážit pro a proti komprese zpráv. Vyplatí se ušetřená přenesená data oproti režiji spojené s kompresí a dekompresí zpráv?
 
-\subsection{Rozšíření C++ komponenty}
+\subsection{Integrace do existující servisní C++ komponenty}
 Zadavatel na STB provozuje malého démona dmd napsaného v C++, který mimo jiné obsahuje minimalistický HTTP webserver. Dále v browseru běží Javascript aplikace (nangu.TV portál), která pomocí messagingu komunikuje s centrálním serverem. Tato Javascript aplikace ovšem nemůže přímo používat Shell API.
 Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplikaci řídit konfiguraci logování (viz bod Vzdálená konfigurace).
 
@@ -185,6 +146,45 @@ DEFAULT     = INFO
 
 TODO rozepsat
 
+\section{Postprocessign zpráv}
+
+\subsection{Pravidlo pro filtrování zpráv pro dané komponenty}
+Zprávy s nastavenou severitou INFO a komponentou sld\_br je třeba změnit podle následujícího vzoru.
+
+\subsubsection*{Originální zpráva:}
+\begin{scriptsize}
+\begin{verbatim}
+2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 sld_br: id=559 
+:[stbhal.cpp:debug:520]: INFO: [94mDEBUG: InformationService:
+ Reading 'nangu.video.forcedScart': false[0m
+\end{verbatim}}
+\end{scriptsize}
+
+\subsubsection*{Upravená zpráva:}
+\begin{scriptsize}
+\begin{verbatim}
+2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 nangu-portal: [94m InformationService:
+ Reading 'nangu.video.forcedScart': false[0m
+\end{verbatim}}
+\end{scriptsize}
+
+\subsubsection{TODO další pravidla}
+doplnit v průběhu implementace pravidel
+
+\subsubsection{Převod severit}
+Aplikace na STB používají pro logování jinou množinu severit, než s jakými pracuje Rsyslog. Zadavatel proto požaduje změnit severity zpráv podle následující tabulky.
+
+\begin{table}[ht]
+\centering
+	\caption{Převodní tabulka}	\begin{tabular}{|l|l|}\hline
+		Portal		& Syslog			\tabularnewline \hline \hline
+		ERROR:		& ERR			\tabularnewline \hline
+		WARN:		& WARN			\tabularnewline \hline
+		INFO:		& NOTICE			\tabularnewline \hline
+		DEBUG:		& INFO			\tabularnewline \hline
+		TRACE:		& DEBUG			\tabularnewline \hline
+	\end{tabular}
+\end{table}
 
 
 \chapter{Realizace}
