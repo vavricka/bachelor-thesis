@@ -78,18 +78,69 @@ Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplik
 
 \chapter{Analýza}
 
-\section{Set-top box O2 TV - EKT DID7006mTF}
-\subsection*{Hardware specifikace}
-\subsection*{Nainstalovaný software}
-\subsection*{Gu}
-\subsection*{PKGBUILD}
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=0.5]{images/STB}
+	\caption[STB]{Diagram nasazení původního řešení STB}
+\end{figure}
 
 \section{Současné řešení}
+V této kapitole jsou uvedeny a popsány jednotlivé pro tuto práci důlužité komponenty současného řešení.
+
+\subsection{Syslogd}
+Tato logovací utilita se skládá ze dvou démonu, jmenovitě z Klogd, který má na starost logy linuxového kernelu, druhým démonem je pak syslogd, který spravuje všechny zbylé logy.
+Oba tyto démoni mají velice omezenou funkcionalitu. Dokáží logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií.
+Zadavatel mu pro své potřeby navíc doimplementoval číslování jednotlivých zpráv pro rozpoznání výpadku a za druhé naivní rate-limiting zpráv. Ten je naivní z důvodu, že používá statický buffer na počet zpráv, který nebere ohled na jejich velikost a hlavně bufferované zprávy se neodešlou samy, ale jen s nově příchozími zprávami.
+Za použití tohoto dému není možné splnit některé stěžejní technické požadavky, jako například "Snížení objemu logů" nebo "Post processing zpráv". Proto bude nutné ho nahradit nějakým vyspělejším démonem. Tím se ale zabývá až další kapitola "Volba postupu řešení".
+
+\subsection{Browser}
+Browser je rozsáhlá v javascriptu napsaná aplikace, která - TODO co dělá? -
+
+ kromě jiných funkcionalit slouží k vzdálenému ovládání STB. Naslouchá zprávám z aplikačního serveru, v závislosti na kterých vygeneruje POST či GET request pro démon dmd.
+Browser generuje značné množství logů jejichž nevýhodou je, že nepoužívají standardizovanou syslog množinu severit, ale svou vlastní s ní nekompatibilní. Implementaci browseru v této práci bohužel není možné měnit a proto je třeba nekompatibilitu vyřešit pomocí logovacího démonu démonu.
+
+\subsection{Servisní komponenta dmd}
+Dmd je v C++ napsaná servisní komponenta, která zprostředkovává komunikaci mezi Browserem a shellovým prostředím a umožňuje tak servisním technikům přistupovat na dálku k shellu STB. Výsadou dmd je jeho snadno rozšiřitelné API.
+
+\subsection{Servery zadavatele}
+TODO-Matěj nějak popsat ty servery, když už jsou na UML diagramu tak je třeba je popsat END-TODO
+Aplikační servery starající se o bussines logiku není možné v této práci jakkoli měnit. Je nutné zachovat kompatibilitu.
+
+\section{Buildovací systém Gu}
+Gu je buildovací systém pro linuxová embedded zařízení, který si klade za cíl zjednodušit a urychlit buildovací proces. Gu využívá balíčkovací systém pacman (původně z Arch Linuxu) a nástroj scratchbox2 sloužící k zjednodušení cross-kompilace. Tyto 2 nástroje jsou skryty v konzolovém přikazu "gu", kterým se celé Gu ovládá.
+
+\section{PKGBUILD}
+Jedn8 se shellový script obsahující informace potřebné pro build jednotlivých aplikací systémem Gu. Níže je pro představu uveden vzorový script:
+\begin{scriptsize}
+\begin{verbatim}
+pkgname=libee
+pkgver=0.4.1
+pkgrel=1
+arch=('armv7h' 'armv7sp')
+depends=('libestr')
+
+build() {
+    cd ${pkgname}-${pkgver}
+    PKG_CONFIG_PATH=/mnt/hdd_1/lib/pkgconfig
+    ./configure --prefix=/mnt/hdd_1
+    make V=1
+}
+
+package() {
+    cd ${pkgname}-${pkgver}
+    make install DESTDIR=${pkgdir}
+}
+\end{verbatim}
+\end{scriptsize}
+
+Povinná pole jsou "pkgname", označující název balíčku, "pkgver" pro určení jeho verze, "pkgrel" sloužící k označení verze PKGBUILD scriptu a "arch" definující cílové architektury.
+ Script dále obsahuje funkce zajišťující build a instalaci balíčku. Každý PKGBUILD musí obsahovat minimálne funkci package(), která nainstaluje soubory do cílové složky. Užitečnou funkcí je funkce build() sloužící k přípravě a kompilaci zdrojových kódů před samotnou jejich instalací.
 
 \section{Volba postupu řešení}
 Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího démona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji.
 Je tedy nutno problém řešit na straně set-top boxu kde původní řešení je postaveno na busy-box syslogd. Nabízí se možnost upravit fungování tím způsobem, aby se logy s nízkou severitou už na set-top boxu zahazovaly a pouze v případě potřeby bylo umožněné na dálku změnit konfiguraci démona tak, aby se povolilo logování pro logy s nastavenou danou komponentou a severitou. To vše přes SHELL-ové API.
 Součástí zadání je ale i implementovat škrcení zpráv, aby nedocházelo k zahlcení linky. Takovou možnost prostý syslogd neposkytuje a je proto nutno zvážit napsání vlastního démona či nasazení jiného, vyspělejšího logovacího démona.
+
 
 \section{Srovnání logovacích démonů}
 Démon v UNIXovém světě je označení pro takový proces, který oproti běžným procesům neintereaguje přímo s uživatelem, ale běží na pozadí operačního systému a funguje samostatně. Účelem logovacího démona je sběr logů od ostatních procesů, které následně v závislosti na jeho konfiguraci dokáže filtrovat a ukládat na disk či odesílat na požadovaný vzdálený server.
@@ -97,8 +148,7 @@ Démon v UNIXovém světě je označení pro takový proces, který oproti běž
 V této kapitole zmíním a popíši vybrané logovací démony a v závěru kapitoly je porovnám.
 
 \subsection*{BusyBox Syslogd}
-Tato logovací utilita se skládá ze dvou démonu, jmenovitě z Klogd, který má na starost logy linuxového kernelu, druhým démonem je pak syslogd, který spravuje všechny zbylé logy.
-Oba tyto démoni mají velice omezenou funkcionalitu. Dokáží logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a tím výčet jejich funkcionalit končí.
+Tento démon je již popsán v předešlé kapitole.
 
 \subsection*{Syslog-ng}
 Flexibilní logovací démon zaměřený na centralizované a zabezpečené logování. Má široké možnosti nastavení a poskytuje obrovské množství funkcionalit. Takže jeho vhodným nakonfigurováním se dají snadno splnit všechny vytyčené technické požadavky až na požadavek pro možnost vzdálené změny konfigurace.
@@ -121,13 +171,12 @@ Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za j
 \begin{scriptsize}
 \begin{verbatim}
 set_log_verbosity.sh [component] [severity]
-\end{verbatim}}
+\end{verbatim}
 \end{scriptsize}
 
 TODO rozepsat
 
 \subsection*{Shellové API - 2. způsob}
-
 
 \begin{scriptsize}
 \begin{verbatim}
@@ -141,7 +190,7 @@ component1  = DEBUG
 componentXY = INFO
 ...
 DEFAULT     = INFO
-\end{verbatim}}
+\end{verbatim}
 \end{scriptsize}
 
 TODO rozepsat
@@ -178,22 +227,24 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 \centering
 	\caption{Převodní tabulka}	\begin{tabular}{|l|l|}\hline
 		Portal		& Syslog			\tabularnewline \hline \hline
-		ERROR:		& ERR			\tabularnewline \hline
-		WARN:		& WARN			\tabularnewline \hline
-		INFO:		& NOTICE			\tabularnewline \hline
-		DEBUG:		& INFO			\tabularnewline \hline
-		TRACE:		& DEBUG			\tabularnewline \hline
+		ERROR		& ERR			\tabularnewline \hline
+		WARN		& WARN			\tabularnewline \hline
+		INFO		& NOTICE			\tabularnewline \hline
+		DEBUG		& INFO			\tabularnewline \hline
+		TRACE		& DEBUG			\tabularnewline \hline
 	\end{tabular}
 \end{table}
 
 
 \chapter{Realizace}
 
-\section{Nasazení Rsyslogu}
-\subsection*{build}
-\subsection*{konfigurace}
+\section{Rsyslog}
+\subsection{build}
+\subsection{konfigurace}
 
 \section{Shell API}
+
+\section{dmd}
 
 \chapter{Testování}
 
@@ -212,69 +263,6 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 	\item[GUI] Graphical user interface
 	\item[XML] Extensible markup language
 \end{description}
-
-
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% % Tuto kapitolu z výsledné práce ODSTRAŇTE.
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-% 
-% \subsection{Typografie}
-% 
-% Při psaní dodržujte typografické konvence zvoleného jazyka. České \uv{uvozovky} zapisujte použitím příkazu \verb|\uv|, kterému v~parametru předáte text, jenž má být v~uvozovkách. Anglické otevírací uvozovky se v~\LaTeX{}u zadávají jako dva zpětné apostrofy, uzavírací uvozovky jako dva apostrofy. Často chybně uváděný symbol "{} (palce) nemá s~uvozovkami nic společného.
-% 
-% Dále je třeba zabránit zalomení řádky mezi některými slovy, v~češtině např. za jednopísmennými předložkami a spojkami (vyjma \uv{a}). To docílíte vložením pružné nezalomitelné mezery -- znakem \texttt{\textasciitilde}. V~tomto případě to není třeba dělat ručně, lze použít program \verb|vlna|.
-% 
-% Více o~typografii viz \cite{kobltypo}.
-% 
-% \subsection{Obrázky}
-% 
-% Pro umožnění vkládání obrázků je vhodné použít balíček \verb|graphicx|, samotné vložení se provede příkazem \verb|\includegraphics|. Takto je možné vkládat obrázky ve formátu PDF, PNG a JPEG jestliže používáte pdf\LaTeX{} nebo ve formátu EPS jestliže používáte \LaTeX{}. Doporučujeme preferovat vektorové obrázky před rastrovými (vyjma fotografií).
-% 
-% \subsubsection{Získání vhodného formátu}
-% 
-% Pro získání vektorových formátů PDF nebo EPS z~jiných lze použít některý z~vektorových grafických editorů. Pro převod rastrového obrázku na vektorový lze použít rasterizaci, kterou mnohé editory zvládají (např. Inkscape). Pro konverze lze použít též nástroje pro dávkové zpracování běžně dodávané s~\LaTeX{}em, např. \verb|epstopdf|.
-% 
-% \subsubsection{Plovoucí prostředí}
-% 
-% Příkazem \verb|\includegraphics| lze obrázky vkládat přímo, doporučujeme však použít plovoucí prostředí, konkrétně \verb|figure|. Například obrázek \ref{fig:float} byl vložen tímto způsobem. Vůbec přitom nevadí, když je obrázek umístěn jinde, než bylo původně zamýšleno -- je tomu tak hlavně kvůli dodržení typografických konvencí. Namísto vynucování konkrétní pozice obrázku doporučujeme používat odkazování z~textu (dvojice příkazů \verb|\label| a \verb|\ref|).
-% 
-% \begin{figure}\centering
-% 	\includegraphics[width=0.5\textwidth, angle=30]{cvut-logo-bw}
-% 	\caption[Příklad obrázku]{Ukázkový obrázek v~plovoucím prostředí}\label{fig:float}
-% \end{figure}
-% 
-% \subsubsection{Verze obrázků}
-% 
-% % Gnuplot BW i barevně
-% Může se hodit mít více verzí stejného obrázku, např. pro barevný či černobílý tisk a nebo pro prezentaci. S~pomocí některých nástrojů na generování grafiky je to snadné.
-% 
-% Máte-li například graf vytvořený v programu Gnuplot, můžete jeho černobílou variantu (viz obr. \ref{fig:gnuplot-bw}) vytvořit parametrem \verb|monochrome dashed| příkazu \verb|set term|. Barevnou variantu (viz obr. \ref{fig:gnuplot-col}) vhodnou na prezentace lze vytvořit parametrem \verb|colour solid|.
-% 
-% \begin{figure}\centering
-% 	\includegraphics{gnuplot-bw}
-% 	\caption{Černobílá varianta obrázku generovaného programem Gnuplot}\label{fig:gnuplot-bw}
-% \end{figure}
-% 
-% \begin{figure}\centering
-% 	\includegraphics{gnuplot-col}
-% 	\caption{Barevná varianta obrázku generovaného programem Gnuplot}\label{fig:gnuplot-col}
-% \end{figure}
-% 
-% 
-% \subsection{Tabulky}
-% 
-% Tabulky lze zadávat různě, např. v~prostředí \verb|tabular|, avšak pro jejich vkládání platí to samé, co pro obrázky -- použijte plovoucí prostředí, v~tomto případě \verb|table|. Například tabulka \ref{tab:matematika} byla vložena tímto způsobem.
-% 
-% \begin{table}\centering
-% 	\caption[Příklad tabulky]{Zadávání matematiky}\label{tab:matematika}
-% 	\begin{tabular}{|l|l|c|c|}\hline
-% 		Typ		& Prostředí		& \LaTeX{}ovská zkratka	& \TeX{}ovská zkratka	\tabularnewline \hline \hline
-% 		Text		& \verb|math|		& \verb|\(...\)|	& \verb|$...$|		\tabularnewline \hline
-% 		Displayed	& \verb|displaymath|	& \verb|\[...\]|	& \verb|$$...$$|	\tabularnewline \hline
-% 	\end{tabular}
-% \end{table}
-% 
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % 
 
 \chapter{Obsah přiloženého CD}
 

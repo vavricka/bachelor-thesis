@@ -299,7 +299,7 @@ sp\^ osobom, ktor\'y nezni\v zuje hodnotu Diela (vr\'atane komer\v cn\'eho vyu\v
 					\else
 						\ClassError{FITthesis}{Department unspecified}{Specify the department using the \department command.}
 					\fi
-				} & \hfill\includegraphics[width=.16\textwidth]{cvut-logo-bw}
+				} & \hfill\includegraphics[width=.16\textwidth]{images/cvut-logo-bw}
 			\end{tabular*}
 		\end{center}
 		
