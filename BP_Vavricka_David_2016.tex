@@ -87,30 +87,36 @@ Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplik
 \section{Současné řešení}
 V této kapitole jsou uvedeny a popsány jednotlivé pro tuto práci důlužité komponenty současného řešení.
 
-\subsection{Syslogd}
-Tato logovací utilita se skládá ze dvou démonu, jmenovitě z Klogd, který má na starost logy linuxového kernelu, druhým démonem je pak syslogd, který spravuje všechny zbylé logy.
-Oba tyto démoni mají velice omezenou funkcionalitu. Dokáží logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií.
+\subsection{Runtime prostředí}
+Na STB běží OS GNU/Linux s Busybox sadou aplikací, která nahrazuje standardní GNU shellové utility. Busybox aplikace jsou díky své malé velikosti vhodnější pro embedded zařízení. Na druhou stranu neobsahují všechny funkcionality a možnosti nastavení.
+
+\subsubsection*{Browser}
+Browser je jednoduchý internetový prohlížeč dodaný výrobcem STB.
+V něm běží v Javascriptu zadavatelem napsaná aplikace, která může sloužit k vzdálenému ovládání STB. Naslouchá zprávám z aplikačního serveru, v závislosti na kterých vygeneruje POST či GET request pro démon dmd.
+Browser generuje velké množství logů, většinu jich generuje podprogram player zajišťující televizní vysílání. Tyto logy nepoužívají standardizovanou syslog množinu severit, ale svou vlastní s ní nekompatibilní. Logovací démon ovšem očekává zprávy právě podle syslog standardu. Implementaci browseru ani playeru nemůže zadavatel měnit a proto je třeba nekompatibilitu vyřešit pomocí logovacího démonu.
+
+\subsubsection*{Servisní komponenta dmd}
+Dmd je v C++ napsaná servisní komponenta, která zprostředkovává komunikaci mezi Browserem a shellovým prostředím pomocí minimalistického HTTP serveru. Umožňuje JavaScript aplikaci na STB provádět operace, které jsou dostupné jen z shellového API.
+
+\subsubsection*{BusyBox Syslogd}
+Jedná se o minimalistický logovací démon, který je podrobněji popsán v následující kapitole "Srovnání logovacích démonů".
 Zadavatel mu pro své potřeby navíc doimplementoval číslování jednotlivých zpráv pro rozpoznání výpadku a za druhé naivní rate-limiting zpráv. Ten je naivní z důvodu, že používá statický buffer na počet zpráv, který nebere ohled na jejich velikost a hlavně bufferované zprávy se neodešlou samy, ale jen s nově příchozími zprávami.
-Za použití tohoto dému není možné splnit některé stěžejní technické požadavky, jako například "Snížení objemu logů" nebo "Post processing zpráv". Proto bude nutné ho nahradit nějakým vyspělejším démonem. Tím se ale zabývá až další kapitola "Volba postupu řešení".
+Za použití tohoto démonu není možné splnit některé stěžejní technické požadavky, jako například "Snížení objemu logů" nebo "Post processing zpráv". Proto bude nutné ho nahradit nějakým vyspělejším démonem. Tím se ale zabývá až další kapitola "Volba postupu řešení".
 
-\subsection{Browser}
-Browser je rozsáhlá v javascriptu napsaná aplikace, která - TODO co dělá? -
+\subsection{Aplikační server}
+Aplikační server se stará o business logiku, například poskytuje uživately práva přehrát daný kanál nebo film, komunikuje s javascriptovou aplikací, která se vůči němu autorizuje a podobně.
+AS není možné v této práci jakkoli měnit. Je nutné zachovat kompatibilitu.
 
- kromě jiných funkcionalit slouží k vzdálenému ovládání STB. Naslouchá zprávám z aplikačního serveru, v závislosti na kterých vygeneruje POST či GET request pro démon dmd.
-Browser generuje značné množství logů jejichž nevýhodou je, že nepoužívají standardizovanou syslog množinu severit, ale svou vlastní s ní nekompatibilní. Implementaci browseru v této práci bohužel není možné měnit a proto je třeba nekompatibilitu vyřešit pomocí logovacího démonu démonu.
+\subsection{Servery pro sběr logů}
+Zadavatel provozuje cluster serverů sbírajících logy od statisíců STB. Běží na nich rsyslog nakonfigurovaný pro co nejlepší výkonost.
 
-\subsection{Servisní komponenta dmd}
-Dmd je v C++ napsaná servisní komponenta, která zprostředkovává komunikaci mezi Browserem a shellovým prostředím a umožňuje tak servisním technikům přistupovat na dálku k shellu STB. Výsadou dmd je jeho snadno rozšiřitelné API.
 
-\subsection{Servery zadavatele}
-TODO-Matěj nějak popsat ty servery, když už jsou na UML diagramu tak je třeba je popsat END-TODO
-Aplikační servery starající se o bussines logiku není možné v této práci jakkoli měnit. Je nutné zachovat kompatibilitu.
-
-\section{Buildovací systém Gu}
+\section{Vývoj pro STB}
+\subsection{Buildovací systém Gu}
 Gu je buildovací systém pro linuxová embedded zařízení, který si klade za cíl zjednodušit a urychlit buildovací proces. Gu využívá balíčkovací systém pacman (původně z Arch Linuxu) a nástroj scratchbox2 sloužící k zjednodušení cross-kompilace. Tyto 2 nástroje jsou skryty v konzolovém přikazu "gu", kterým se celé Gu ovládá.
 
-\section{PKGBUILD}
-Jedn8 se shellový script obsahující informace potřebné pro build jednotlivých aplikací systémem Gu. Níže je pro představu uveden vzorový script:
+\subsection{PKGBUILD}
+Jedná se shellový script obsahující informace potřebné pro build jednotlivých aplikací systémem Gu. Níže je pro představu uveden vzorový script:
 \begin{scriptsize}
 \begin{verbatim}
 pkgname=libee
@@ -148,7 +154,8 @@ Démon v UNIXovém světě je označení pro takový proces, který oproti běž
 V této kapitole zmíním a popíši vybrané logovací démony a v závěru kapitoly je porovnám.
 
 \subsection*{BusyBox Syslogd}
-Tento démon je již popsán v předešlé kapitole.
+Tato logovací utilita se skládá ze dvou démonu, jmenovitě z Klogd, který má na starost logy linuxového kernelu, druhým démonem je pak syslogd, který spravuje všechny zbylé logy.
+Oba tyto démoni mají velice omezenou funkcionalitu. Dokáží logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií.
 
 \subsection*{Syslog-ng}
 Flexibilní logovací démon zaměřený na centralizované a zabezpečené logování. Má široké možnosti nastavení a poskytuje obrovské množství funkcionalit. Takže jeho vhodným nakonfigurováním se dají snadno splnit všechny vytyčené technické požadavky až na požadavek pro možnost vzdálené změny konfigurace.

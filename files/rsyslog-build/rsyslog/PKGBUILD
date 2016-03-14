@@ -12,7 +12,7 @@ md5sums=('SKIP')
 build() {
 	cd ${pkgname}-${pkgver}
 	PKG_CONFIG_PATH=/mnt/hdd_1/lib/pkgconfig
-	./configure --prefix=/mnt/hdd_1 --disable-uuid --enable-omprog
+	./configure --prefix=/mnt/hdd_1 --disable-uuid --enable-omprog --enable-mmsequence
 	make V=1
 }
 
