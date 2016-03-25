@@ -1,6 +1,6 @@
 pkgbase=rsyslog
 pkgname=${pkgbase}
-pkgver=8.16.0
+pkgver=8.16.0-nangu-0.2
 pkgrel=1
 pkgdesc="An enhanced multi-threaded syslogd with a focus on security and reliability"
 arch=('armv7h' 'armv7sp')
@@ -10,13 +10,14 @@ source=${pkgname}-${pkgver}.tar.gz
 md5sums=('SKIP')
 
 build() {
-	cd ${pkgname}-${pkgver}
+	cd ${pkgname}
 	PKG_CONFIG_PATH=/mnt/hdd_1/lib/pkgconfig
-	./configure --prefix=/mnt/hdd_1 --disable-uuid --enable-omprog --enable-mmsequence
+	autoreconf -fvi
+	./configure --prefix=/mnt/hdd_1 --disable-uuid --enable-omprog --enable-mmsequence --enable-mmsevrewrite --enable-mmdelstr
 	make V=1
 }
 
 package() {
-	cd ${pkgname}-${pkgver}
+	cd ${pkgname}
 	make install DESTDIR=${pkgdir}
 }
