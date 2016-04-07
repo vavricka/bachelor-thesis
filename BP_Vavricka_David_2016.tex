@@ -76,7 +76,7 @@ Bylo by vhodné zvážit pro a proti komprese zpráv. Vyplatí se ušetřená p�
 Zadavatel na STB provozuje malého démona dmd napsaného v C++, který mimo jiné obsahuje minimalistický HTTP webserver. Dále v browseru běží Javascript aplikace (nangu.TV portál), která pomocí messagingu komunikuje s centrálním serverem. Tato Javascript aplikace ovšem nemůže přímo používat Shell API.
 Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplikaci řídit konfiguraci logování (viz bod Vzdálená konfigurace).
 
-\chapter{Analýza}
+\chapter{Analýza a návrh}
 
 \begin{figure}[!h]
 	\centering
@@ -92,19 +92,19 @@ Na STB běží OS GNU/Linux s Busybox sadou aplikací, která nahrazuje standard
 
 \subsubsection*{Browser}
 Browser je jednoduchý internetový prohlížeč dodaný výrobcem STB.
-V něm běží v Javascriptu zadavatelem napsaná aplikace, která může sloužit k vzdálenému ovládání STB. Naslouchá zprávám z aplikačního serveru, v závislosti na kterých vygeneruje POST či GET request pro démon dmd.
-Browser generuje velké množství logů, většinu jich generuje podprogram player zajišťující televizní vysílání. Tyto logy nepoužívají standardizovanou syslog množinu severit, ale svou vlastní s ní nekompatibilní. Logovací démon ovšem očekává zprávy právě podle syslog standardu. Implementaci browseru ani playeru nemůže zadavatel měnit a proto je třeba nekompatibilitu vyřešit pomocí logovacího démonu.
+V něm běží v Javascriptu zadavatelem napsaná aplikace poskytující uživatelské rozhraní. Mimo to také naslouchá zprávám z aplikačního serveru, na jejichž základě může provádět akce, a to včetně generování POST či GET requestu pro démon dmd.
+Tato javascriptová aplikace spolu s dalším podpogramem nesoucím název player generují velké množství logů. Tyto logy nepoužívají standardizovanou syslog množinu severit, ale svou vlastní s ní nekompatibilní. Logovací démon ovšem očekává zprávy právě podle syslog standardu. Implementaci browseru ani playeru nemůže zadavatel měnit a proto je třeba nekompatibilitu vyřešit pomocí logovacího démonu.
 
 \subsubsection*{Servisní komponenta dmd}
 Dmd je v C++ napsaná servisní komponenta, která zprostředkovává komunikaci mezi Browserem a shellovým prostředím pomocí minimalistického HTTP serveru. Umožňuje JavaScript aplikaci na STB provádět operace, které jsou dostupné jen z shellového API.
 
 \subsubsection*{BusyBox Syslogd}
-Jedná se o minimalistický logovací démon, který je podrobněji popsán v následující kapitole "Srovnání logovacích démonů".
+Jedná se o minimalistický logovací démon, který je podrobněji popsán v následující kapitole \uv{Srovnání logovacích démonů}.
 Zadavatel mu pro své potřeby navíc doimplementoval číslování jednotlivých zpráv pro rozpoznání výpadku a za druhé naivní rate-limiting zpráv. Ten je naivní z důvodu, že používá statický buffer na počet zpráv, který nebere ohled na jejich velikost a hlavně bufferované zprávy se neodešlou samy, ale jen s nově příchozími zprávami.
-Za použití tohoto démonu není možné splnit některé stěžejní technické požadavky, jako například "Snížení objemu logů" nebo "Post processing zpráv". Proto bude nutné ho nahradit nějakým vyspělejším démonem. Tím se ale zabývá až další kapitola "Volba postupu řešení".
+Za použití tohoto démonu není možné splnit některé stěžejní technické požadavky, jako například \uv{Snížení objemu logů} nebo \uv{Post processing zpráv}. Proto bude nutné ho nahradit nějakým vyspělejším démonem. Tím se ale zabývá až další kapitola \uv{Nové řešení}.
 
 \subsection{Aplikační server}
-Aplikační server se stará o business logiku, například poskytuje uživately práva přehrát daný kanál nebo film, komunikuje s javascriptovou aplikací, která se vůči němu autorizuje a podobně.
+Aplikační server se stará o business logiku, například poskytuje uživateli práva přehrát daný kanál nebo film, komunikuje s javascriptovou aplikací, která se vůči němu autorizuje a podobně.
 AS není možné v této práci jakkoli měnit. Je nutné zachovat kompatibilitu.
 
 \subsection{Servery pro sběr logů}
@@ -113,7 +113,7 @@ Zadavatel provozuje cluster serverů sbírajících logy od statisíců STB. Bě
 
 \section{Vývoj pro STB}
 \subsection{Buildovací systém Gu}
-Gu je buildovací systém pro linuxová embedded zařízení, který si klade za cíl zjednodušit a urychlit buildovací proces. Gu využívá balíčkovací systém pacman (původně z Arch Linuxu) a nástroj scratchbox2 sloužící k zjednodušení cross-kompilace. Tyto 2 nástroje jsou skryty v konzolovém přikazu "gu", kterým se celé Gu ovládá.
+Gu je buildovací systém pro linuxová embedded zařízení, který si klade za cíl zjednodušit a urychlit buildovací proces. Gu využívá balíčkovací systém pacman (převzatý z Arch Linuxu) a nástroj scratchbox2 sloužící k zjednodušení cross-kompilace. Tyto 2 nástroje jsou skryty v konzolovém přikazu \uv{gu}, kterým se celé Gu ovládá.
 
 \subsection{PKGBUILD}
 Jedná se o shellový script obsahující informace potřebné pro build jednotlivých aplikací systémem Gu. Níže je pro představu uveden vzorový script:
@@ -139,10 +139,17 @@ package() {
 \end{verbatim}
 \end{scriptsize}
 
-Povinná pole jsou "pkgname", označující název balíčku, "pkgver" pro určení jeho verze, "pkgrel" sloužící k označení verze PKGBUILD scriptu a "arch" definující cílové architektury.
+Povinná pole jsou \uv{pkgname}, označující název balíčku, \uv{pkgver} pro určení jeho verze, \uv{pkgrel} sloužící k označení verze PKGBUILD scriptu a \uv{arch} definující cílové architektury.
  Script dále obsahuje funkce zajišťující build a instalaci balíčku. Každý PKGBUILD musí obsahovat minimálne funkci package(), která nainstaluje soubory do cílové složky. Užitečnou funkcí je funkce build() sloužící k přípravě a kompilaci zdrojových kódů před samotnou jejich instalací.
 
-\section{Volba postupu řešení}
+\section{Nové řešení}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=0.5]{images/STB-new}
+	\caption[STB-new]{Diagram nasazení nového řešení STB}
+\end{figure}
+
 Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího démona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji.
 Je tedy nutno problém řešit na straně set-top boxu kde původní řešení je postaveno na busy-box syslogd. Nabízí se možnost upravit fungování tím způsobem, aby se logy s nízkou severitou už na set-top boxu zahazovaly a pouze v případě potřeby bylo umožněné na dálku změnit konfiguraci démona tak, aby se povolilo logování pro logy s nastavenou danou komponentou a severitou. To vše přes SHELL-ové API.
 Součástí zadání je ale i implementovat škrcení zpráv, aby nedocházelo k zahlcení linky. Takovou možnost prostý syslogd neposkytuje a je proto nutno zvážit napsání vlastního démona či nasazení jiného, vyspělejšího logovacího démona.
@@ -154,8 +161,7 @@ Démon v UNIXovém světě je označení pro takový proces, který oproti běž
 V této kapitole zmíním a popíši vybrané logovací démony a v závěru kapitoly je porovnám.
 
 \subsection*{BusyBox Syslogd}
-Tato logovací utilita se skládá ze dvou démonu, jmenovitě z Klogd, který má na starost logy linuxového kernelu, druhým démonem je pak syslogd, který spravuje všechny zbylé logy.
-Oba tyto démoni mají velice omezenou funkcionalitu. Dokáží logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií.
+Tato logovací utilita se skládá ze dvou démonu, jmenovitě z Klogd, který zachytává logy z kernelu a předává je ke zpracování Syslogdémonu. Syslogd pak zachytává i všechny zbylé logy a dále s nimi nakládá. Má však velice omezenou funkcionalitu. Dokáže pouze logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií.
 
 \subsection*{Syslog-ng}
 Flexibilní logovací démon zaměřený na centralizované a zabezpečené logování. Má široké možnosti nastavení a poskytuje obrovské množství funkcionalit. Takže jeho vhodným nakonfigurováním se dají snadno splnit všechny vytyčené technické požadavky až na požadavek pro možnost vzdálené změny konfigurace.
@@ -171,20 +177,18 @@ Pouhým nasazením jakéhokoli známého logovacího démonu není možné splni
 Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či Rsyslog. Oba totiž poskytují námi požadované funkcionality. Syslog-ng však většinu z nich poskytuje pouze v placené closed-source verzi a proto jsem se rozhodl pro Rsyslog.
 
 \section{Vzdálená konfigurace}
-Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za jeho běhu není možné měnit. Je pro to nutné napsat SHELL-ové API, které umožní na dálku přenastavit tento konfigurační soubor a restartovat rsyslog
+Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za jeho běhu není možné měnit. Je pro to nutné napsat SHELL-ové API, které umožní na dálku přenastavit tento konfigurační soubor a restartovat rsyslog.
 
 \subsection*{Shellové API - 1. způsob}
-
+API ve formě scriptu, který na vstupu přijímá jednotlivé názvy komponent a jemu příslušící maximální povolenou severitu, na jejichž základě překonfiguruje rsyslog.
 \begin{scriptsize}
 \begin{verbatim}
-set_log_verbosity.sh [component] [severity]
+set_log_verbosity.sh [component] [severity] [component2] [severity] ...
 \end{verbatim}
 \end{scriptsize}
 
-TODO rozepsat
-
 \subsection*{Shellové API - 2. způsob}
-
+API, které čte z vlastního konfiguračního souboru seznam komponent a jim příslušící maximální povolené severity.
 \begin{scriptsize}
 \begin{verbatim}
 /etc/logging.conf
@@ -200,11 +204,11 @@ DEFAULT     = INFO
 \end{verbatim}
 \end{scriptsize}
 
-TODO rozepsat
+\subsection*{Shellové API - porovnání}
+Jako vhodnější se jeví 1. způsob, jelikož s jeho použitím odpadá starost o další konfigurační soubor a navíc je jednoduší a rycheljší na obsluhu.
 
 \section{Postprocessign zpráv}
-
-\subsection{Pravidlo pro filtrování zpráv pro dané komponenty}
+\subsection{Smazání podřetězce z těla syslog zprávy}
 Zprávy s nastavenou severitou INFO a komponentou sld\_br je třeba změnit podle následujícího vzoru.
 
 \subsubsection*{Originální zpráva:}
@@ -216,18 +220,19 @@ Zprávy s nastavenou severitou INFO a komponentou sld\_br je třeba změnit podl
 \end{verbatim}}
 \end{scriptsize}
 
-\subsubsection*{Upravená zpráva:}
+\subsubsection*{Výsledná zpráva:}
 \begin{scriptsize}
 \begin{verbatim}
-2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 nangu-portal: [94m InformationService:
- Reading 'nangu.video.forcedScart': false[0m
+2016-02-18T14:05:24+01:00 cc-b8-f1-00-6f-07 sld_br: id=559
+[94mDEBUG: InformationService: Reading 'nangu.video.forcedScart':
+false[0m
 \end{verbatim}}
 \end{scriptsize}
 
-\subsubsection{TODO další pravidla}
-doplnit v průběhu implementace pravidel
+\subsection{Zahazování zpráv podle typu komponenty}
+Je třeba dokázat rozpoznat a zahodit zprávy podle zadané komponenty a obsahující určitý podřetězec.
 
-\subsubsection{Převod severit}
+\subsection{Převod severit}
 Aplikace na STB používají pro logování jinou množinu severit, než s jakými pracuje Rsyslog. Zadavatel proto požaduje změnit severity zpráv podle následující tabulky.
 
 \begin{table}[ht]
@@ -242,14 +247,26 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 	\end{tabular}
 \end{table}
 
-
 \chapter{Realizace}
 
 \section{Rsyslog}
+
 \subsection{build}
+Rsyslog bylo nutno zkompilovat ze zdrojových kódů včetně mnoha závislostí.
+
 \subsection{konfigurace}
+TODO jednotlivy configurace pro pravidla, dodat ukázky configů..
+krome popsani rsyslog.conf i logrotate etc all scripty
+nebo mozna do jine podsekce toto
+\subsection{modul mmstrdel}
+\subsection{modul mmsevbalbab}
+
 
 \section{Shell API}
+
+\begin{lstlisting}[language=Bash]
+TODO code
+\end{lstlisting}
 
 \section{dmd}
 
@@ -267,9 +284,9 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 \chapter{Seznam použitých zkratek}
 % \printglossaries
 \begin{description}
-	\item[API] TODO
+	\item[API] Application Programming Interface
+	\item[ASH] Almquist shell
 	\item[dmd] Download manager daemon
-	\item[GNU] TODO
 	\item[STB] Set-top box
 \end{description}
 
