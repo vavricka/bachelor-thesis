@@ -90,15 +90,15 @@ V této kapitole jsou uvedeny a popsány jednotlivé pro tuto práci důlužité
 \subsection{Runtime prostředí}
 Na STB běží OS GNU/Linux s Busybox sadou aplikací, která nahrazuje standardní GNU shellové utility. Busybox aplikace jsou díky své malé velikosti vhodnější pro embedded zařízení. Na druhou stranu neobsahují všechny funkcionality a možnosti nastavení.
 
-\subsubsection*{Browser}
+\subsubsection{Browser}
 Browser je jednoduchý internetový prohlížeč dodaný výrobcem STB.
 V něm běží v Javascriptu zadavatelem napsaná aplikace poskytující uživatelské rozhraní. Mimo to také naslouchá zprávám z aplikačního serveru, na jejichž základě může provádět akce, a to včetně generování POST či GET requestu pro démon dmd.
 Tato javascriptová aplikace spolu s dalším podpogramem nesoucím název player generují velké množství logů. Tyto logy nepoužívají standardizovanou syslog množinu severit, ale svou vlastní s ní nekompatibilní. Logovací démon ovšem očekává zprávy právě podle syslog standardu. Implementaci browseru ani playeru nemůže zadavatel měnit a proto je třeba nekompatibilitu vyřešit pomocí logovacího démonu.
 
-\subsubsection*{Servisní komponenta dmd}
+\subsubsection{Servisní komponenta dmd}
 Dmd je v C++ napsaná servisní komponenta, která zprostředkovává komunikaci mezi Browserem a shellovým prostředím pomocí minimalistického HTTP serveru. Umožňuje JavaScript aplikaci na STB provádět operace, které jsou dostupné jen z shellového API.
 
-\subsubsection*{BusyBox Syslogd}
+\subsubsection{BusyBox Syslogd}
 Jedná se o minimalistický logovací démon, který je podrobněji popsán v následující kapitole \uv{Srovnání logovacích démonů}.
 Zadavatel mu pro své potřeby navíc doimplementoval číslování jednotlivých zpráv pro rozpoznání výpadku a za druhé naivní rate-limiting zpráv. Ten je naivní z důvodu, že používá statický buffer na počet zpráv, který nebere ohled na jejich velikost a hlavně bufferované zprávy se neodešlou samy, ale jen s nově příchozími zprávami.
 Za použití tohoto démonu není možné splnit některé stěžejní technické požadavky, jako například \uv{Snížení objemu logů} nebo \uv{Post processing zpráv}. Proto bude nutné ho nahradit nějakým vyspělejším démonem. Tím se ale zabývá až další kapitola \uv{Nové řešení}.
@@ -161,7 +161,7 @@ Démon v UNIXovém světě je označení pro takový proces, který oproti běž
 V této kapitole zmíním a popíši vybrané logovací démony a v závěru kapitoly je porovnám.
 
 \subsection*{BusyBox Syslogd}
-Tato logovací utilita se skládá ze dvou démonu, jmenovitě z Klogd, který zachytává logy z kernelu a předává je ke zpracování Syslogdémonu. Syslogd pak zachytává i všechny zbylé logy a dále s nimi nakládá. Má však velice omezenou funkcionalitu. Dokáže pouze logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií.
+Tato logovací utilita se skládá ze dvou démonů, jmenovitě z Klogd, který zachytává logy z kernelu a předává je ke zpracování Syslogdémonu. Syslogd pak zachytává i všechny zbylé logy a dále s nimi nakládá. Má však velice omezenou funkcionalitu. Dokáže pouze logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií. Dokáže totiž filtrovat pouze podle typu facility a už nikoliv podle názvu komponenty, která log vygenerovala.
 
 \subsection*{Syslog-ng}
 Flexibilní logovací démon zaměřený na centralizované a zabezpečené logování. Má široké možnosti nastavení a poskytuje obrovské množství funkcionalit. Takže jeho vhodným nakonfigurováním se dají snadno splnit všechny vytyčené technické požadavky až na požadavek pro možnost vzdálené změny konfigurace.
@@ -177,18 +177,27 @@ Pouhým nasazením jakéhokoli známého logovacího démonu není možné splni
 Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či Rsyslog. Oba totiž poskytují námi požadované funkcionality. Syslog-ng však většinu z nich poskytuje pouze v placené closed-source verzi a proto jsem se rozhodl pro Rsyslog.
 
 \section{Vzdálená konfigurace}
-Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za jeho běhu není možné měnit. Je pro to nutné napsat SHELL-ové API, které umožní na dálku přenastavit tento konfigurační soubor a restartovat rsyslog.
+Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za jeho běhu není možné měnit. Je proto nutné napsat SHELL-ové API, které umožní na dálku přenastavit tento konfigurační soubor a restartovat Rsyslog. Rsyslog dokáže načíst nový konfigurační soubor zdánlivě i bez restartu a to po obdržení SIGHUP signálu. Avšak ve skutečnosti \cite{RsyslogHUP} k restartu dojde i tak a nelze se proto jeho restartování vyhnout.
 
-\subsection*{Shellové API - 1. způsob}
-API ve formě scriptu, který na vstupu přijímá jednotlivé názvy komponent a jemu příslušící maximální povolenou severitu, na jejichž základě překonfiguruje rsyslog.
+Požadavkem zadavatele je umožnit změnu nastavení maximální povolené severity jednotlivých komponent. Tedy nastavit Rsyslog tak, aby v případě rozpoznání zprávy od určité komponenty spolu s nastavenou severitou vyšší, než je povolená, danou zprávu zahodil. Změny tímto skriptem způsobebé musí být zachovány i po restartu STB.
+
+V této kapitole diskutuji možná řešení SHELLL-ového API. Samotná implementace je k nalezení v kapitole Realizace.
+
+\subsection{Logika skriptu}
+V úvahu připadaly 2 různé přístupy. Je možné při každém zavolání scriptu generovat celý nový konfigurační soubor a nebo parsovat stávající soubor a jeho část pomocí skriptu měnit.
+Výhodou prvního způsobu je, že nehrozí nechtěné přepsání jiných čásí skriptu, než bylo zamýšleno. Nevýhodou je složitější implementace z důvodu nutnosti pří generování nového skriptu zohledňovat předchozí nastavení skritpu. Tedy by bylo nutno z původního skriptu extrahovat nastavení jednotlivých komponent a to zkombinovat s novým nastavením.
+Rozhodl jsem se proto pro 2. způsob řešení s tím, že zadavatel bude poučen o nutnosti dodržovat určité zásady při měnění konfiguračního souboru, aby nemohlo dojít k neočekávanému chování.
+
+\subsection{Rozhraní skriptu}
+První možností je napsat API ve formě scriptu, který přijímá jednotlivé názvy komponent a jim příslušící maximální povolenou severitu jako parametry.
 \begin{scriptsize}
 \begin{verbatim}
 set_log_verbosity.sh [component] [severity] [component2] [severity] ...
 \end{verbatim}
 \end{scriptsize}
 
-\subsection*{Shellové API - 2. způsob}
-API, které čte z vlastního konfiguračního souboru seznam komponent a jim příslušící maximální povolené severity.
+Jako druhá možnost připadá v úvahu skript, který čte seznam jednotlivých komponent a maximálních povolených severit ze souboru, který má následující formát:
+
 \begin{scriptsize}
 \begin{verbatim}
 /etc/logging.conf
@@ -204,10 +213,10 @@ DEFAULT     = INFO
 \end{verbatim}
 \end{scriptsize}
 
-\subsection*{Shellové API - porovnání}
-Jako vhodnější se jeví 1. způsob, jelikož s jeho použitím odpadá starost o další konfigurační soubor a navíc je jednoduší a rycheljší na obsluhu.
+Se zadavatelem jsme se shodli, že se lépe jeví první způsob pro jeho jednoduší a rycheljší obsluhu a navíc s jeho použitím odpadá starost o další konfigurační soubor.
 
 \section{Postprocessign zpráv}
+Všechna níže zmíněná pravidla jsou myšlena jako vzory pro zadavatele, který podle nich v budoucnu vytvoří svá vlastní.
 \subsection{Smazání podřetězce z těla syslog zprávy}
 Zprávy s nastavenou severitou INFO a komponentou sld\_br je třeba změnit podle následujícího vzoru.
 
@@ -247,6 +256,22 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 	\end{tabular}
 \end{table}
 
+\section{Rate-limiting zpráv}
+Původní řešení obsahuje rate-limiting implementovaný tím způsobem, že do zdrojového kódu BusyBox syslogd, který je v jednom malém C souboru, byl doimplementován statický buffer s omezenou velikostí pro 128 kB zpráv.
+
+V Rsyslogu se podobného efektu dá dosáhnout prostým nastavením modulu imuxsock, kde parametry RateLimit.Interval a RateLimit.Burst určují maximální povolený počet zpráv za daný počet sekund.
+\begin{scriptsize}
+\begin{verbatim}
+module(load="imuxsock"             #Provides support for local system logging.
+	SysSock.RateLimit.Interval="2" #Specifies the rate-limiting interval in seconds.
+	SysSock.RateLimit.Burst="500"  #Specifies the rate-limiting burst in number of messages.
+)
+\end{verbatim}
+\end{scriptsize}
+Původní řešení trápí neduh, kdy k vyprázdnění bufferu dochází až s nově příchozí zprávou, což má za následek, že v případě zaplněného bufferu a následující delší odmlky nově příchozích zpráv může dojit k velkému zpoždení odeslání zpráv v ten moment uložených v bufferu. Tento problém se sofistikovanějišího Rsyslogu netýká.
+
+V sekci Testování se zabývám hledáním ideálního nastavení těchto parametrů.
+
 \chapter{Realizace}
 
 \section{Rsyslog}
@@ -263,7 +288,9 @@ nebo mozna do jine podsekce toto
 
 
 \section{Shell API}
-
+Na STB je přítomna pouze minimalistická BusyBox implementace SHELLu nesoucí název ASH, která neposkytuje tak elegantní syntaxi a neposkytuje tolik rozšířených funkcionalit jako moderní SHELL-ové jazyky typu BASH. I přesto se s pomocí ASHe a základních UNIXových programů jako například GREP povedlo API naprogramovat.
+Skript na vstupu očekává sudý počet parametrů, kde každý sudý parametr je název komponenty a liché parametry slouží pro definování severit.
+Skript vyhledá v konfiguračním souboru rsyslog.conf řádek s danou komponentou a přenastaví maximální povolenou severitu. Skript kontrolojue správnost vstupních parametrů pro zabránení neočekávaného chování programu.
 \begin{lstlisting}[language=Bash]
 TODO code
 \end{lstlisting}
@@ -285,9 +312,10 @@ TODO code
 % \printglossaries
 \begin{description}
 	\item[API] Application Programming Interface
-	\item[ASH] Almquist shell
+	\item[ASH] Almquist Shell
 	\item[dmd] Download manager daemon
 	\item[STB] Set-top box
+	\item[SIGHUP] Signal Hang Up
 \end{description}
 
 \chapter{Obsah přiloženého CD}

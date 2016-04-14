@@ -13,7 +13,7 @@ build() {
 	cd ${pkgname}
 	PKG_CONFIG_PATH=/mnt/hdd_1/lib/pkgconfig
 	autoreconf -fvi
-	./configure --prefix=/mnt/hdd_1 --disable-uuid --enable-omprog --enable-mmsequence --enable-mmsevrewrite --enable-mmdelstr
+	./configure --prefix=/mnt/hdd_1 --disable-uuid --enable-mmsequence --enable-mmsevrewrite --enable-mmdelstr
 	make V=1
 }
 
