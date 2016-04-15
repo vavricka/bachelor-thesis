@@ -1,6 +1,6 @@
 pkgbase=rsyslog
 pkgname=${pkgbase}
-pkgver=8.16.0-nangu-0.2
+pkgver=8.16.0-nangu-0.3
 pkgrel=1
 pkgdesc="An enhanced multi-threaded syslogd with a focus on security and reliability"
 arch=('armv7h' 'armv7sp')
