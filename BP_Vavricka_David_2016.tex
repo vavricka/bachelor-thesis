@@ -1,29 +1,22 @@
-% options:
-% hidelinks remove colour boxes around hyperlinks
 \documentclass[thesis=B,czech]{FITthesis}[2012/06/26]
 
-\usepackage[utf8]{inputenc} % LaTeX source encoded as UTF-8
-\usepackage{graphicx} %graphics files inclusion
-% \usepackage{amsmath} %advanced maths
-% \usepackage{amssymb} %additional math symbols
-\usepackage{dirtree} %directory tree visualisation
-
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{dirtree}
+\usepackage{float}
 \usepackage{listings}
 
-
-% % list of acronyms
-% \usepackage[acronym,nonumberlist,toc,numberedsection=autolabel]{glossaries}
-% \iflanguage{czech}{\renewcommand*{\acronymname}{Seznam pou{\v z}it{\' y}ch zkratek}}{}
-% \makeglossaries
-
-\newcommand{\tg}{\mathop{\mathrm{tg}}} %cesky tangens
-\newcommand{\cotg}{\mathop{\mathrm{cotg}}} %cesky cotangens
+\lstset{basicstyle=\ttfamily,
+	showstringspaces=false,
+	commentstyle=\color{red},
+	keywordstyle=\color{blue}
+}
 
 \department{Katedra softwarového inženýrství}
 \title{Flexibilní logování pro embedded Linuxové systémy}
-\authorGN{David} %(křestní) jméno (jména) autora
-\authorFN{Vavřička} %příjmení autora
-\authorWithDegrees{David Vavřička} %jméno autora včetně současných akademických titulů
+\authorGN{David}
+\authorFN{Vavřička}
+\authorWithDegrees{David Vavřička}
 \supervisor{Ing. Matěj Laitl}
 \acknowledgements{Doplňte, máte-li komu a za co děkovat. V~opačném případě úplně odstraňte tento příkaz.}
 \abstractCS{Doplňte}
@@ -34,9 +27,6 @@
 \keywordsEN{logging, embedded systems, logging daemons, Linux, Rsyslog}
 
 \begin{document}
-
-% \newacronym{CVUT}{{\v C}VUT}{{\v C}esk{\' e} vysok{\' e} u{\v c}en{\' i} technick{\' e} v Praze}
-% \newacronym{FIT}{FIT}{Fakulta informa{\v c}n{\' i}ch technologi{\' i}}
 
 \begin{introduction}
 
@@ -76,16 +66,109 @@ Bylo by vhodné zvážit pro a proti komprese zpráv. Vyplatí se ušetřená p�
 Zadavatel na STB provozuje malého démona dmd napsaného v C++, který mimo jiné obsahuje minimalistický HTTP webserver. Dále v browseru běží Javascript aplikace (nangu.TV portál), která pomocí messagingu komunikuje s centrálním serverem. Tato Javascript aplikace ovšem nemůže přímo používat Shell API.
 Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplikaci řídit konfiguraci logování (viz bod Vzdálená konfigurace).
 
-\chapter{Analýza a návrh}
+\chapter{Logování v linuxových systémech}
+Systémoví administrátoři nakládají s kvanty nejrůznějších zpráv (logů) pocházejících ať už přímo z daného systému, od jednotlivých systémových komponent nebo dokonce i z jiných vzdálených systémů. Pro jejich snažší správu slouží na UNIX-ových a tedy i LINUX-ových systémech tzv. Syslog. Tím je myšleno Syslog API skrze které se odesílají jednotlivé zprávy na standardizovaný socket /dev/log. Dále je tím myšlen Syslog démon spravující jednotlivé logy. A konečně syslog protokol, tedy specifikace určující formát zpráv nebo také například způsob transportu zpráv po síti.
 
-\begin{figure}[!h]
+\section{Syslog démon}
+Démon je v UNIXovém světě označení pro takový proces, který oproti běžným procesům neintereaguje přímo s uživatelem, ale běží na pozadí operačního systému a funguje samostatně. Hlavním účelem syslog démona je sběr logů od ostatních procesů, které následně v závislosti na jeho konfiguraci dokáže filtrovat a ukládat na disk či odesílat na požadovaný vzdálený server.
+
+\section{Syslog formát zpráv}
+\begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.5]{images/STB}
-	\caption[STB]{Diagram nasazení původního řešení STB}
+	\includegraphics[scale=0.3]{images/syslog-message-format}
+	\caption[Formát syslog zprávy]{Formát syslog zprávy}
+\end{figure}
+
+Syslog zpráva se skládá ze 3 částí jak je pro lepší představu graficky vyobrazeno na obrázku výše.
+
+V části zvané PRI (priorita) se skrývájí dvě číselné hodnoty facility a severity. Facility určuje zdroj logů a severity jejich důležitost (tedy zda se jedná například pouze o debug hlášku a nebo naopak o důležitou zprávu například o pádu programu). Na základě těchto dvou hodnot syslog démon provádí základní filtraci zpráv.  
+Se severitou a facilitou zpráv se budeme v této práci častokrát setkávat a proto jsou na konci kapitoly umístěny tabulky jejich hodnot.
+
+V části zvané HEADER (hlavička) nalezneme časovou značku a hostname nebo IP adresu zdrojového zařízení dané zprávy.
+Část MSG již obsahuje text samotné zprávy.
+
+Tyto zprávy obvykle po síti putují skrze skrze UDP protokol, jelikož obvykle upřednostuňujeme rychlost nad spolehlivostí. Syslog standard omezuje velikost paketu zprávy na maximální velikost 1024 Bytů.
+
+\section{Syslog protokol}
+Syslog protokol~\cite{NetworkAdmSurGuide} spatřil světlo světa již v roce 1980. Má ho na svědomí Eric Allman, který ho psal s úmyslem využít ho pro potřeby Sendmail projektu. Nicméně postupem času byl tento protokol díky skvělému návrhu a díky své jednoduchosti adaptován i jinými projekty. Rozšířil se na různé OS a později se stal standardem pro logování na většině Unixových systémů.
+Tento protokol poskytuje možnost zařízením posílat notifikační zprávy (logy) ať už skrze sít a nebo lokálně v rámci jednoho zařízení na syslog server, kterým je již v minulé kapitole zmíňený syslog démon.
+
+\subsection{The BSD syslog Protocol - RFC 3164}
+Až po přibližně 20-ti letech od vzniku syslog protokolu sepsal Chris Lonvick dokument RFC3146~\cite{RFC3164} popisující daný protokol. Do té doby existovala velká spousta v detailech se lišících implementací, což mělo za následek v jistých případech nekompatibilitu. Dokument čítá celkem 19 stránek kde je především detailně popsán formát a parametry zpráv.
+
+\subsection{The Syslog Protocol - RFC 5424}
+Oficiální standard vznikl až s příchodem Syslog protokolu RFC 5424, který světu představil v roce 2009 jeho autor Rainer Gerhards. Počet stránek se rozrostl na 37 a došlo k některým zásadním a velice užitečným změnám.
+
+Nový standard umožňuje použití libovolného trasnportního protokolu~\cite{RFC5424-TrProt}, oproti RFC 3164, kde je jako transportní protokol pevně určeno UDP~\cite{RFC3164-UDP}.
+Mírných změn doznal také formát zpráv, který je možno strukturovaně rozšířovat dle specifických potřeb~\cite{RFC5424-MsgForm}.
+
+V této práci je vžy při zmíňce o syslog protokolu myšlen standard RFC 5424.
+
+\begin{table}[ht]
+\centering
+	\caption[Tabulka severit podle RFC 5424]{Seznam severit dle RFC 5424.~\cite{RFC5424}}
+	\begin{tabular}{|l|l|l|}\hline
+		Číselný kód	& Severity & Význam	\tabularnewline \hline \hline
+		0		& Emergency	&	System is unusable. \tabularnewline \hline
+		1		& Alert		&	Action must be taken immediately. \tabularnewline \hline
+		2		& Critical	&	Critical conditions. \tabularnewline \hline
+		3		& Error		&	Error conditions.	\tabularnewline \hline
+		4		& Warning	&	Warning conditions. \tabularnewline \hline
+		5		& Notice		&	Normal but significant condition. \tabularnewline \hline
+		6		& Informational & Informational messages. \tabularnewline \hline
+		7		& Debug		&	Debug-level messages. \tabularnewline \hline
+	\end{tabular}
+\end{table}
+
+\begin{table}[ht]   %[H] místo [ht] aby to bylo přesně na daném místě
+\centering
+	\caption[Tabulka facilit podle RFC 5424]{Seznam facilit dle RFC 5424.~\cite{RFC5424}}
+	\begin{tabular}{|l|l|}\hline
+		Číselný kód & Facility			\tabularnewline \hline \hline
+		0		& kernel messages		\tabularnewline \hline
+		1		& user-level messages	\tabularnewline \hline
+		2		& mail system			\tabularnewline \hline
+		3		& system daemons			\tabularnewline \hline
+		4		& security/authorization messages			\tabularnewline \hline
+		5		& messages generated internally by syslogd	\tabularnewline \hline
+		6		& line printer subsystem		\tabularnewline \hline
+		7		& network news subsystem		\tabularnewline \hline
+		8		& UUCP subsystem			\tabularnewline \hline
+		9		& clock daemon			\tabularnewline \hline
+		10		& security/authorization messages			\tabularnewline \hline
+		11		& FTP daemon				\tabularnewline \hline
+		12		& NTP subsystem			\tabularnewline \hline
+		13		& log audit				\tabularnewline \hline
+		14		& log alert				\tabularnewline \hline
+		15		& clock daemon			\tabularnewline \hline
+		16		& local use 0			\tabularnewline \hline
+		17		& local use 1			\tabularnewline \hline
+		18		& local use 2			\tabularnewline \hline
+		19		& local use 3			\tabularnewline \hline
+		20		& local use 4			\tabularnewline \hline
+		21		& local use 5			\tabularnewline \hline
+		22		& local use 6			\tabularnewline \hline
+		23		& local use 7			\tabularnewline \hline
+	\end{tabular}
+\end{table}
+
+\chapter{Analýza a návrh}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.5]{images/diagram-nasazeni-puvodniho-reseni}
+	\caption[Diagram nasazení původního řešení]{Diagram nasazení původního řešení}
 \end{figure}
 
 \section{Současné řešení}
 V této kapitole jsou uvedeny a popsány jednotlivé pro tuto práci důlužité komponenty současného řešení.
+
+\subsection{HW specifikace STB EKT DID7006}
+\begin{description}
+  \item [CPU:] ARM 9 Ali M3733
+  \item [GPU:] Mali 400
+  \item [RAM:] 512MB DDR3
+  \item [Perzistentní paměť:] 512MB NAND Flash
+\end{description}
 
 \subsection{Runtime prostředí}
 Na STB běží OS GNU/Linux s Busybox sadou aplikací, která nahrazuje standardní GNU shellové utility. Busybox aplikace jsou díky své malé velikosti vhodnější pro embedded zařízení. Na druhou stranu neobsahují všechny funkcionality a možnosti nastavení.
@@ -144,10 +227,10 @@ Povinná pole jsou \uv{pkgname}, označující název balíčku, \uv{pkgver} pro
 
 \section{Nové řešení}
 
-\begin{figure}[!h]
+\begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.5]{images/STB-new}
-	\caption[STB-new]{Diagram nasazení nového řešení STB}
+	\includegraphics[scale=0.5]{images/diagram-nasazeni-noveho-reseni}
+	\caption[Diagram nasazení nového řešení]{Diagram nasazení nového řešení}
 \end{figure}
 
 Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího démona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji.
@@ -156,23 +239,21 @@ Součástí zadání je ale i implementovat škrcení zpráv, aby nedocházelo k
 
 
 \section{Srovnání logovacích démonů}
-Démon v UNIXovém světě je označení pro takový proces, který oproti běžným procesům neintereaguje přímo s uživatelem, ale běží na pozadí operačního systému a funguje samostatně. Účelem logovacího démona je sběr logů od ostatních procesů, které následně v závislosti na jeho konfiguraci dokáže filtrovat a ukládat na disk či odesílat na požadovaný vzdálený server.
-
 V této kapitole zmíním a popíši vybrané logovací démony a v závěru kapitoly je porovnám.
 
-\subsection*{BusyBox Syslogd}
+\subsection{BusyBox Syslogd}
 Tato logovací utilita se skládá ze dvou démonů, jmenovitě z Klogd, který zachytává logy z kernelu a předává je ke zpracování Syslogdémonu. Syslogd pak zachytává i všechny zbylé logy a dále s nimi nakládá. Má však velice omezenou funkcionalitu. Dokáže pouze logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií. Dokáže totiž filtrovat pouze podle typu facility a už nikoliv podle názvu komponenty, která log vygenerovala.
 
-\subsection*{Syslog-ng}
+\subsection{Syslog-ng}
 Flexibilní logovací démon zaměřený na centralizované a zabezpečené logování. Má široké možnosti nastavení a poskytuje obrovské množství funkcionalit. Takže jeho vhodným nakonfigurováním se dají snadno splnit všechny vytyčené technické požadavky až na požadavek pro možnost vzdálené změny konfigurace.
 Je nutno ale zmínit, že pokročilé funkce jako například šifrování zpráv, bufferování nebo message-rate kontrola jsou dostupné pouze v komerční closed-source verzi.
 
-\subsection*{Rsyslog}
+\subsection{Rsyslog}
 Výčet funkcionalit Rsyslogu je ještě obsáhlejší než u Syslog-ng. Technické požadavky se s jeho použitím tedy také dají splnit všechny, kromě vzdálené změny konfigurace. Oproti Syslog-ng je Rsyslog kompletně zdarma a open-source. Navíc není jen logovacím démonem, ale i analyzérem logů. Dokáže logy podle obsahu zprávy měnit, třídit a jinak s nimy nakládat.
 Že je Rsyslog vyspělý a kvalitní program dokazuje fakt, že je defaultním logovacím démonem na spoustě linuxových distribucích, jmenovitě například v Ubuntu.
 Jeho slabiny shledávám v nedostatečné dokumentaci a ve specifických případech v neefektivním analyzování logů mající za následek (obvzláště na embedded zařízení s pomalým ARM procesorem) rychlostní deficit. Jeho vývoj obstarává z velké většiny pouze jeden člověk, jeho původní tvůrce Rainer Gerhards. A v jednom člověku není snadné dovést tak rozsáhlý projekt k dokonalosti.
 
-\subsection*{Porovnání výše zmíněných logovacích utilit}
+\subsection{Porovnání výše zmíněných logovacích utilit}
 Pouhým nasazením jakéhokoli známého logovacího démonu není možné splnit všechny vytyčené technické požadavky. V případě ponechání původního BusyBox syslogd démonu by pro splnění technických požadavků bylo nutno doimplementovat tolik funkcionalit, že by to výrazně přesahovalo rozsah bakalářské práce.
 Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či Rsyslog. Oba totiž poskytují námi požadované funkcionality. Syslog-ng však většinu z nich poskytuje pouze v placené closed-source verzi a proto jsem se rozhodl pro Rsyslog.
 
@@ -246,7 +327,7 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 
 \begin{table}[ht]
 \centering
-	\caption{Převodní tabulka}	\begin{tabular}{|l|l|}\hline
+	\caption{Převodní tabulka severit}	\begin{tabular}{|l|l|}\hline
 		Portal		& Syslog			\tabularnewline \hline \hline
 		ERROR		& ERR			\tabularnewline \hline
 		WARN		& WARN			\tabularnewline \hline
@@ -276,24 +357,50 @@ V sekci Testování se zabývám hledáním ideálního nastavení těchto param
 
 \section{Rsyslog}
 
-\subsection{build}
-Rsyslog bylo nutno zkompilovat ze zdrojových kódů včetně mnoha závislostí.
+\subsection{Build}
+Jelikož Rsyslog není součástí SDK, bylo ho nutné a všechny knihovny na kterých závisí (zlib, libestr, libee, liblogging, libfastjson) zkompilovat a posléze nainstalovat na STB.
 
-\subsection{konfigurace}
+
+
+
+\subsection{Konfigurace}
+
 TODO jednotlivy configurace pro pravidla, dodat ukázky configů..
 krome popsani rsyslog.conf i logrotate etc all scripty
 nebo mozna do jine podsekce toto
-\subsection{modul mmstrdel}
-\subsection{modul mmsevbalbab}
+
+\subsection{spouštění}
+protože se musí upravit rsys.conf dke se nastaví MAC addr která následně bude v hlavičce každe zprávy
+
+\subsection{Programování vlastích modulů}
+
+Rsyslog nepodporuje TODO..
+http://www.rsyslog.com/doc/v8-stable/configuration/modules/index.html
+
+\subsubsection{Modul mmstrdel}
+
+%TODO language zmenit na Rainerscript a ten si sam nadefinovat.
+\begin{lstlisting}
+module(load="mmdelstr") 
+action(type="mmdelstr" stringtobedeleted="Some string")
+\end{lstlisting}
+
+
+\subsubsection{Modul mmsevrewrite}
+
+\begin{lstlisting}
+module(load="mmsevrewrite")
+action(type="mmsevrewrite" severity="debug")
+\end{lstlisting}
 
 
 \section{Shell API}
 Na STB je přítomna pouze minimalistická BusyBox implementace SHELLu nesoucí název ASH, která neposkytuje tak elegantní syntaxi a neposkytuje tolik rozšířených funkcionalit jako moderní SHELL-ové jazyky typu BASH. I přesto se s pomocí ASHe a základních UNIXových programů jako například GREP povedlo API naprogramovat.
 Skript na vstupu očekává sudý počet parametrů, kde každý sudý parametr je název komponenty a liché parametry slouží pro definování severit.
 Skript vyhledá v konfiguračním souboru rsyslog.conf řádek s danou komponentou a přenastaví maximální povolenou severitu. Skript kontrolojue správnost vstupních parametrů pro zabránení neočekávaného chování programu.
-\begin{lstlisting}[language=Bash]
-TODO code
-\end{lstlisting}
+%\begin{lstlisting}[language=Bash]
+%TODO code
+%\end{lstlisting}
 
 \section{dmd}
 
@@ -309,11 +416,16 @@ TODO code
 \appendix
 
 \chapter{Seznam použitých zkratek}
-% \printglossaries
 \begin{description}
 	\item[API] Application Programming Interface
 	\item[ASH] Almquist Shell
+	\item[CPU] Central Processing Unit
 	\item[dmd] Download manager daemon
+	\item[GPU] Graphics processing unit
+	\item[OS] Operační systém
+	\item[RAM] Random Access memory
+	\item[RFC] Request for Comments
+	\item[SDK] Software Development Kit
 	\item[STB] Set-top box
 	\item[SIGHUP] Signal Hang Up
 \end{description}

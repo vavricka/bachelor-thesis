@@ -38,12 +38,37 @@
  % The order in the reference list is alphabetical by authors.
  %---------------------------------------------------------------------
 
+%---------------------------------------------------------------------
+% Custom entry type "online" added by Ondra Fiedler in 2013
+% It is intended for citations of online sources in format of CSN ISO 690-2 
+% (Warning: I am not sure if it respects the norm absolutely)
+% It allows you to specify non-standard entries:
+% "cite" - date of the citation
+% "lastupdate" - date of last update of the source
+% "site" - name of the website
+%
+% Example:
+% @online{ukazka,
+% author = {Jmeno Prijmeni},
+% title = {Nazev webove stranky},
+% site = {Nazev weboveho sidla},
+% address = {Misto publikovani},
+% publisher = {Nakladatel},
+% year = {2013},
+% lastupdate = {Datum aktualizace/revize},
+% cite = {Datum citovani},
+% issn = {Standardni identifikator},
+% url = {http://citaceonlinezdroje.cz}
+% }
+%---------------------------------------------------------------------
+
 ENTRY
   { address
     archive
     author
     booktitle
     chapter
+    cite
     doi
     edition
     editor
@@ -56,6 +81,7 @@ ENTRY
     journal
     key
     language
+    lastupdate
     month
     note
     number
@@ -64,6 +90,7 @@ ENTRY
     publisher
     school
     series
+    site
     title
     type
     url
@@ -559,6 +586,16 @@ FUNCTION {format.issn}
     }
   if$
 }
+
+FUNCTION {format.cite}
+{ cite "cite" bibinfo.check
+  duplicate$ empty$ 'skip$
+    {
+      "[cit. " swap$ * "]" *
+    }
+  if$
+}
+
 
 FUNCTION {format.doi}
 { doi "doi" bibinfo.check
@@ -1313,6 +1350,40 @@ FUNCTION {misc}
   write.url
   empty.misc.check
 }
+
+
+
+FUNCTION {online}
+{ output.bibitem
+  format.authors output
+  add.colon
+  format.title output
+  new.sentence
+  site "site" bibinfo.warn output
+  emphasize
+  add.blank
+  "[online]" output
+  new.sentence
+  publisher empty$
+    {
+      format.organization.address output }
+      {
+        organization "organization" bibinfo.check output
+        format.publisher.address output
+      }
+    if$
+  format.date output
+  lastupdate "lastupdate" bibinfo.check output
+  add.blank
+  format.cite output 
+  format.eprint output
+  format.issn output
+  format.note output
+  fin.entry
+  write.url
+}
+
+
 FUNCTION {phdthesis}
 { output.bibitem
   format.authors "author" output.check
@@ -1548,7 +1619,7 @@ FUNCTION {presort}
   'sort.key$ :=
 }
 ITERATE {presort}
-% SORT
+SORT
 STRINGS { longest.label }
 INTEGERS { number.label longest.label.width }
 FUNCTION {initialize.longest.label}
