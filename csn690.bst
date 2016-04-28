@@ -1619,7 +1619,7 @@ FUNCTION {presort}
   'sort.key$ :=
 }
 ITERATE {presort}
-SORT
+%SORT
 STRINGS { longest.label }
 INTEGERS { number.label longest.label.width }
 FUNCTION {initialize.longest.label}

@@ -67,7 +67,7 @@ Zadavatel na STB provozuje malého démona dmd napsaného v C++, který mimo jin
 Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplikaci řídit konfiguraci logování (viz bod Vzdálená konfigurace).
 
 \chapter{Logování v linuxových systémech}
-Systémoví administrátoři nakládají s kvanty nejrůznějších zpráv (logů) pocházejících ať už přímo z daného systému, od jednotlivých systémových komponent nebo dokonce i z jiných vzdálených systémů. Pro jejich snažší správu slouží na UNIX-ových a tedy i LINUX-ových systémech tzv. Syslog. Tím je myšleno Syslog API skrze které se odesílají jednotlivé zprávy na standardizovaný socket /dev/log. Dále je tím myšlen Syslog démon spravující jednotlivé logy. A konečně syslog protokol, tedy specifikace určující formát zpráv nebo také například způsob transportu zpráv po síti.
+Systémoví administrátoři se musí umět vypořádat s množstvím nejrůznějších zpráv pocházejících ať už přímo z daného systému, od jednotlivých systémových komponent nebo dokonce i z jiných vzdálených systémů. Pro jejich snažší správu slouží na UNIX-ových a tedy i LINUX-ových systémech tzv. Syslog. Tím je myšleno Syslog API skrze které se odesílají jednotlivé zprávy na standardizovaný socket /dev/log. Dále je tím myšlen Syslog démon spravující jednotlivé logy. A konečně syslog protokol, tedy specifikace určující formát zpráv nebo také například způsob transportu zpráv po síti.
 
 \section{Syslog démon}
 Démon je v UNIXovém světě označení pro takový proces, který oproti běžným procesům neintereaguje přímo s uživatelem, ale běží na pozadí operačního systému a funguje samostatně. Hlavním účelem syslog démona je sběr logů od ostatních procesů, které následně v závislosti na jeho konfiguraci dokáže filtrovat a ukládat na disk či odesílat na požadovaný vzdálený server.
@@ -87,7 +87,7 @@ Se severitou a facilitou zpráv se budeme v této práci častokrát setkávat a
 V části zvané HEADER (hlavička) nalezneme časovou značku a hostname nebo IP adresu zdrojového zařízení dané zprávy.
 Část MSG již obsahuje text samotné zprávy.
 
-Tyto zprávy obvykle po síti putují skrze skrze UDP protokol, jelikož obvykle upřednostuňujeme rychlost nad spolehlivostí. Syslog standard omezuje velikost paketu zprávy na maximální velikost 1024 Bytů.
+Tyto zprávy obvykle po síti putují skrze skrze UDP protokol, jelikož obvykle upřednostuňujeme rychlost nad spolehlivostí. Syslog standard omezuje velikost paketu zprávy na maximálně 1024 Bytů.
 
 \section{Syslog protokol}
 Syslog protokol~\cite{NetworkAdmSurGuide} spatřil světlo světa již v roce 1980. Má ho na svědomí Eric Allman, který ho psal s úmyslem využít ho pro potřeby Sendmail projektu. Nicméně postupem času byl tento protokol díky skvělému návrhu a díky své jednoduchosti adaptován i jinými projekty. Rozšířil se na různé OS a později se stal standardem pro logování na většině Unixových systémů.
@@ -100,7 +100,7 @@ Až po přibližně 20-ti letech od vzniku syslog protokolu sepsal Chris Lonvick
 Oficiální standard vznikl až s příchodem Syslog protokolu RFC 5424, který světu představil v roce 2009 jeho autor Rainer Gerhards. Počet stránek se rozrostl na 37 a došlo k některým zásadním a velice užitečným změnám.
 
 Nový standard umožňuje použití libovolného trasnportního protokolu~\cite{RFC5424-TrProt}, oproti RFC 3164, kde je jako transportní protokol pevně určeno UDP~\cite{RFC3164-UDP}.
-Mírných změn doznal také formát zpráv, který je možno strukturovaně rozšířovat dle specifických potřeb~\cite{RFC5424-MsgForm}.
+Mírných změn doznal také formát zpráv, který je možno strukturovaně rozšiřovat dle specifických potřeb~\cite{RFC5424-MsgForm}.
 
 V této práci je vžy při zmíňce o syslog protokolu myšlen standard RFC 5424.
 
@@ -249,7 +249,7 @@ Flexibilní logovací démon zaměřený na centralizované a zabezpečené logo
 Je nutno ale zmínit, že pokročilé funkce jako například šifrování zpráv, bufferování nebo message-rate kontrola jsou dostupné pouze v komerční closed-source verzi.
 
 \subsection{Rsyslog}
-Výčet funkcionalit Rsyslogu je ještě obsáhlejší než u Syslog-ng. Technické požadavky se s jeho použitím tedy také dají splnit všechny, kromě vzdálené změny konfigurace. Oproti Syslog-ng je Rsyslog kompletně zdarma a open-source. Navíc není jen logovacím démonem, ale i analyzérem logů. Dokáže logy podle obsahu zprávy měnit, třídit a jinak s nimy nakládat.
+Výčet funkcionalit Rsyslogu je ještě obsáhlejší než u Syslog-ng~\cite{Rsyslog-features}. Technické požadavky se s jeho použitím tedy také dají splnit všechny, kromě vzdálené změny konfigurace. Oproti Syslog-ng je Rsyslog kompletně zdarma a open-source. Navíc není jen logovacím démonem, ale i analyzérem logů. Dokáže logy podle obsahu zprávy měnit, třídit a jinak s nimy nakládat.
 Že je Rsyslog vyspělý a kvalitní program dokazuje fakt, že je defaultním logovacím démonem na spoustě linuxových distribucích, jmenovitě například v Ubuntu.
 Jeho slabiny shledávám v nedostatečné dokumentaci a ve specifických případech v neefektivním analyzování logů mající za následek (obvzláště na embedded zařízení s pomalým ARM procesorem) rychlostní deficit. Jeho vývoj obstarává z velké většiny pouze jeden člověk, jeho původní tvůrce Rainer Gerhards. A v jednom člověku není snadné dovést tak rozsáhlý projekt k dokonalosti.
 
@@ -258,7 +258,7 @@ Pouhým nasazením jakéhokoli známého logovacího démonu není možné splni
 Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či Rsyslog. Oba totiž poskytují námi požadované funkcionality. Syslog-ng však většinu z nich poskytuje pouze v placené closed-source verzi a proto jsem se rozhodl pro Rsyslog.
 
 \section{Vzdálená konfigurace}
-Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za jeho běhu není možné měnit. Je proto nutné napsat SHELL-ové API, které umožní na dálku přenastavit tento konfigurační soubor a restartovat Rsyslog. Rsyslog dokáže načíst nový konfigurační soubor zdánlivě i bez restartu a to po obdržení SIGHUP signálu. Avšak ve skutečnosti \cite{RsyslogHUP} k restartu dojde i tak a nelze se proto jeho restartování vyhnout.
+Rsyslog při svém zapnutí čte konfigurační soubor rsyslog.conf, který za jeho běhu není možné měnit. Je proto nutné napsat SHELL-ové API, které umožní přenastavit tento konfigurační soubor a restartovat Rsyslog. Rsyslog dokáže načíst nový konfigurační soubor zdánlivě i bez restartu a to po obdržení SIGHUP signálu. Avšak ve skutečnosti \cite{RsyslogHUP} k restartu dojde i tak a nelze se proto jeho restartování vyhnout.
 
 Požadavkem zadavatele je umožnit změnu nastavení maximální povolené severity jednotlivých komponent. Tedy nastavit Rsyslog tak, aby v případě rozpoznání zprávy od určité komponenty spolu s nastavenou severitou vyšší, než je povolená, danou zprávu zahodil. Změny tímto skriptem způsobebé musí být zachovány i po restartu STB.
 
@@ -294,7 +294,7 @@ DEFAULT     = INFO
 \end{verbatim}
 \end{scriptsize}
 
-Se zadavatelem jsme se shodli, že se lépe jeví první způsob pro jeho jednoduší a rycheljší obsluhu a navíc s jeho použitím odpadá starost o další konfigurační soubor.
+Se zadavatelem jsme se shodli, že se lépe jeví první způsob pro jeho jednoduší a rycheljší obsluhu a navíc s jeho použitím pro zadavatele odpadá starost o další konfigurační soubor.
 
 \section{Postprocessign zpráv}
 Všechna níže zmíněná pravidla jsou myšlena jako vzory pro zadavatele, který podle nich v budoucnu vytvoří svá vlastní.
@@ -374,8 +374,10 @@ protože se musí upravit rsys.conf dke se nastaví MAC addr která následně b
 
 \subsection{Programování vlastích modulů}
 
-Rsyslog nepodporuje TODO..
 http://www.rsyslog.com/doc/v8-stable/configuration/modules/index.html
+TODO popsat vyvoj modulu, typy modulu viz odkaz nahore
+
+
 
 \subsubsection{Modul mmstrdel}
 
@@ -402,7 +404,8 @@ Skript vyhledá v konfiguračním souboru rsyslog.conf řádek s danou komponent
 %TODO code
 %\end{lstlisting}
 
-\section{dmd}
+
+
 
 \chapter{Testování}
 
