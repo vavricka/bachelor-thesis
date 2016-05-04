@@ -45,13 +45,13 @@ Je žádoucí umožnit snížit objem zasílaných logů z důvodu přílišnéh
 Technické řešení musí být schopno za běhu pomocí SHELL-ového API měnit maximální severitu zpráv pro jednotlivé komponenty a dále toto API musí umožnit nastavit výchozí severitu, která se použije pro komponenty ji nemají explicitně nastavenou. Takto změněné nastavení musí být perzistentní i po restartu STB. Výchozí nastavení se obnoví až po factory resetu. API navrhne dle své libovůle sám řešitel.
 
 \subsection{Rate-limiting odesílaných zpráv}
-Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Bude umožněno nastavit jak dlouhodobé tak krátkodobé limity. Naivní rate-limiting je i v existujícím řešení, řešitel navrhne výchozí nastavení nového řešení tak, aby přibližně odpovídalo současnému chování. 
+Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Naivní rate-limiting je i v existujícím řešení, řešitel navrhne výchozí nastavení nového řešení tak, aby přibližně odpovídalo současnému chování. 
 
 \subsection{Formát logů}
 Je nutno zachovat formát logů jako ho má původní řešení, aby se jednalo o drop-in replacement bez nutnosti jakkoli měnit konfiguraci serveru, který sbírá logy od set-top boxů.
 
 \subsection{Razítkování zpráv}
-Každé zprávě se musí přidat textový prefix id=N, kde N monotonicky roste s každou zprávou.  To slouží pro detekci ztracených zpráv. Id přeteče po 32 nebo 64 bitech, to záleží na rozhodnutí řešitele. Po rebootu STB id znovu začíná od 1.
+Každé zprávě se musí přidat textový prefix id=N, kde N monotonicky roste s každou zprávou.  To slouží pro detekci ztracených zpráv. Id přeteče po dvaceti bitech. Po rebootu STB id znovu začíná od 1.
 
 \subsection{Post-processing zpráv}
 Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eliminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je pro jednotlivé skupiny zpráv konstantní. Řešení bude schopné tyto údaje z těla zprávy extrahovat a nahradit jimi původní metadata. Tato pravidlo musí být možné definovat a měnit bez nutnosti nového sestavení softwaru. 
@@ -62,15 +62,27 @@ Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi
 \subsection{Komprese zpráv}
 Bylo by vhodné zvážit pro a proti komprese zpráv. Vyplatí se ušetřená přenesená data oproti režiji spojené s kompresí a dekompresí zpráv?
 
-\subsection{Integrace do existující servisní C++ komponenty}
-Zadavatel na STB provozuje malého démona dmd napsaného v C++, který mimo jiné obsahuje minimalistický HTTP webserver. Dále v browseru běží Javascript aplikace (nangu.TV portál), která pomocí messagingu komunikuje s centrálním serverem. Tato Javascript aplikace ovšem nemůže přímo používat Shell API.
-Požadavkem je rozšířit C++ komponentu dmd tak, aby umožnila Javacript aplikaci řídit konfiguraci logování (viz bod Vzdálená konfigurace).
-
 \chapter{Logování v linuxových systémech}
-Systémoví administrátoři se musí umět vypořádat s množstvím nejrůznějších zpráv pocházejících ať už přímo z daného systému, od jednotlivých systémových komponent nebo dokonce i z jiných vzdálených systémů. Pro jejich snažší správu slouží na UNIX-ových a tedy i LINUX-ových systémech tzv. Syslog. Tím je myšleno Syslog API skrze které se odesílají jednotlivé zprávy na standardizovaný socket /dev/log. Dále je tím myšlen Syslog démon spravující jednotlivé logy. A konečně syslog protokol, tedy specifikace určující formát zpráv nebo také například způsob transportu zpráv po síti.
+Systémoví administrátoři se musí umět vypořádat s množstvím nejrůznějších zpráv ze systémových komponent nebo například ze vzdálených systémů.
+Pro jejich snažší správu slouží na UNIX-ových a tedy i LINUX-ových systémech tzv. Syslog.
+Tím je myšlen Syslog formát zpráv, který zprávám dává unifikovanou podobu.
+Dále je tím myšlen Syslog protokol, tedy specifikace pro přenos Syslog zpráv po síti.
 
 \section{Syslog démon}
-Démon je v UNIXovém světě označení pro takový proces, který oproti běžným procesům neintereaguje přímo s uživatelem, ale běží na pozadí operačního systému a funguje samostatně. Hlavním účelem syslog démona je sběr logů od ostatních procesů, které následně v závislosti na jeho konfiguraci dokáže filtrovat a ukládat na disk či odesílat na požadovaný vzdálený server.
+Démon je v UNIXovém světě označení pro takový proces, který oproti běžným procesům neintereaguje přímo s uživatelem, ale běží na pozadí operačního systému a funguje samostatně. Hlavním účelem syslog démona je sběr logů od ostatních procesů, které následně v závislosti na jeho konfiguraci dokáže filtrovat a ukládat na disk či odesílat na vzdálený server.
+
+\section{Syslog protokol}
+Syslog protokol~\cite{NetworkAdmSurGuide} spatřil světlo světa již v roce 1980. Má ho na svědomí Eric Allman, který jej psal s úmyslem využít ho pro potřeby Sendmail projektu. Nicméně postupem času byl tento protokol díky skvělému návrhu a díky své jednoduchosti adaptován i jinými projekty. Rozšířil se na různé OS a později se stal standardem pro logování na většině Unixových systémů.
+Tento protokol poskytuje možnost zařízením posílat notifikační zprávy ať už skrze sít a nebo lokálně v rámci jednoho zařízení na syslog server, kterým je již v minulé kapitole zmíňený syslog démon.
+
+\subsection{The BSD syslog Protocol - RFC 3164}
+Až po přibližně 20-ti letech od vzniku syslog protokolu sepsal Chris Lonvick dokument RFC3146~\cite{RFC3164} popisující daný protokol. Do té doby existovala velká spousta v detailech se lišících implementací, což mělo za následek v jistých případech nekompatibilitu. Dokument čítá celkem 19 stránek kde je především detailně popsán formát a parametry zpráv.
+
+\subsection{The Syslog Protocol - RFC 5424}
+Oficiální standard vznikl až s příchodem Syslog protokolu RFC 5424, který světu představil v roce 2009 jeho autor Rainer Gerhards. Počet stránek se rozrostl na 37 a došlo k některým zásadním a velice užitečným změnám.
+
+Nový standard umožňuje použití libovolného trasnportního protokolu~\cite{RFC5424-TrProt}, oproti RFC 3164, kde je jako transportní protokol pevně určeno UDP~\cite{RFC3164-UDP}.
+Mírných změn doznal také formát zpráv, který je možno strukturovaně rozšiřovat dle specifických potřeb~\cite{RFC5424-MsgForm}. To má ovšem za následek jeho zpětnou nekompatibilitu s RFC~3164.
 
 \section{Syslog formát zpráv}
 \begin{figure}[H]
@@ -81,72 +93,66 @@ Démon je v UNIXovém světě označení pro takový proces, který oproti běž
 
 Syslog zpráva se skládá ze 3 částí jak je pro lepší představu graficky vyobrazeno na obrázku výše.
 
-V části zvané PRI (priorita) se skrývájí dvě číselné hodnoty facility a severity. Facility určuje zdroj logů a severity jejich důležitost (tedy zda se jedná například pouze o debug hlášku a nebo naopak o důležitou zprávu například o pádu programu). Na základě těchto dvou hodnot syslog démon provádí základní filtraci zpráv.  
-Se severitou a facilitou zpráv se budeme v této práci častokrát setkávat a proto jsou na konci kapitoly umístěny tabulky jejich hodnot.
+\subsection{Část PRI}
+PRI se skládá z jedno až tří-místného decimálního čísla PRIVAL ohraničeného symboly~\uv{<}~na začátku a~\uv{>}~na konci.
+PRIVAL má v sobě zakódované číselné hodnoty parametrů zprávy označovaných jako Severity a Facility.
 
-V části zvané HEADER (hlavička) nalezneme časovou značku a hostname nebo IP adresu zdrojového zařízení dané zprávy.
-Část MSG již obsahuje text samotné zprávy.
 
-Tyto zprávy obvykle po síti putují skrze skrze UDP protokol, jelikož obvykle upřednostuňujeme rychlost nad spolehlivostí. Syslog standard omezuje velikost paketu zprávy na maximálně 1024 Bytů.
+$$Prival= 8*Facility+Severity$$
 
-\section{Syslog protokol}
-Syslog protokol~\cite{NetworkAdmSurGuide} spatřil světlo světa již v roce 1980. Má ho na svědomí Eric Allman, který ho psal s úmyslem využít ho pro potřeby Sendmail projektu. Nicméně postupem času byl tento protokol díky skvělému návrhu a díky své jednoduchosti adaptován i jinými projekty. Rozšířil se na různé OS a později se stal standardem pro logování na většině Unixových systémů.
-Tento protokol poskytuje možnost zařízením posílat notifikační zprávy (logy) ať už skrze sít a nebo lokálně v rámci jednoho zařízení na syslog server, kterým je již v minulé kapitole zmíňený syslog démon.
 
-\subsection{The BSD syslog Protocol - RFC 3164}
-Až po přibližně 20-ti letech od vzniku syslog protokolu sepsal Chris Lonvick dokument RFC3146~\cite{RFC3164} popisující daný protokol. Do té doby existovala velká spousta v detailech se lišících implementací, což mělo za následek v jistých případech nekompatibilitu. Dokument čítá celkem 19 stránek kde je především detailně popsán formát a parametry zpráv.
-
-\subsection{The Syslog Protocol - RFC 5424}
-Oficiální standard vznikl až s příchodem Syslog protokolu RFC 5424, který světu představil v roce 2009 jeho autor Rainer Gerhards. Počet stránek se rozrostl na 37 a došlo k některým zásadním a velice užitečným změnám.
-
-Nový standard umožňuje použití libovolného trasnportního protokolu~\cite{RFC5424-TrProt}, oproti RFC 3164, kde je jako transportní protokol pevně určeno UDP~\cite{RFC3164-UDP}.
-Mírných změn doznal také formát zpráv, který je možno strukturovaně rozšiřovat dle specifických potřeb~\cite{RFC5424-MsgForm}.
-
-V této práci je vžy při zmíňce o syslog protokolu myšlen standard RFC 5424.
+Facility určuje zdroj logů a Severity jejich důležitost (tedy zda se jedná například pouze o debug hlášku nebo naopak o důležitou zprávu například o pádu programu). Na základě těchto dvou hodnot syslog démon provádí základní filtraci zpráv.
+Důležitým poznatkem je, že formát PRI je shodný podle dokumentů RFC 5424 i 3164.
 
 \begin{table}[ht]
 \centering
-	\caption[Tabulka severit podle RFC 5424]{Seznam severit dle RFC 5424.~\cite{RFC5424}}
+	\caption[Tabulka severit podle RFC 3164]{Seznam severit dle RFC 3164.~\cite{RFC3164}}
 	\begin{tabular}{|l|l|l|}\hline
 		Číselný kód	& Severity & Význam	\tabularnewline \hline \hline
-		0		& Emergency	&	System is unusable. \tabularnewline \hline
-		1		& Alert		&	Action must be taken immediately. \tabularnewline \hline
-		2		& Critical	&	Critical conditions. \tabularnewline \hline
-		3		& Error		&	Error conditions.	\tabularnewline \hline
-		4		& Warning	&	Warning conditions. \tabularnewline \hline
-		5		& Notice		&	Normal but significant condition. \tabularnewline \hline
-		6		& Informational & Informational messages. \tabularnewline \hline
-		7		& Debug		&	Debug-level messages. \tabularnewline \hline
+		0		& Emergency	&	Systém je nepoužitelný \tabularnewline \hline
+		1		& Alert		&	Vyžadována okamžitá reakce \tabularnewline \hline
+		2		& Critical	&	Kritický stav \tabularnewline \hline
+		3		& Error		&	Chybový stav	\tabularnewline \hline
+		4		& Warning	&	Upozornění na hrozící chybu \tabularnewline \hline
+		5		& Notice		&	Neobvyklý stav, ale ne chybový \tabularnewline \hline
+		6		& Informational & Informační zpráva \tabularnewline \hline
+		7		& Debug		&	Debugovací zpráva \tabularnewline \hline
 	\end{tabular}
 \end{table}
 
 \begin{table}[ht]   %[H] místo [ht] aby to bylo přesně na daném místě
 \centering
-	\caption[Tabulka facilit podle RFC 5424]{Seznam facilit dle RFC 5424.~\cite{RFC5424}}
-	\begin{tabular}{|l|l|}\hline
-		Číselný kód & Facility			\tabularnewline \hline \hline
-		0		& kernel messages		\tabularnewline \hline
-		1		& user-level messages	\tabularnewline \hline
-		2		& mail system			\tabularnewline \hline
-		3		& system daemons			\tabularnewline \hline
-		4		& security/authorization messages			\tabularnewline \hline
-		5		& messages generated internally by syslogd	\tabularnewline \hline
-		6		& line printer subsystem		\tabularnewline \hline
-		7		& network news subsystem		\tabularnewline \hline
-		8		& UUCP subsystem			\tabularnewline \hline
-		9		& clock daemon			\tabularnewline \hline
-		10		& security/authorization messages			\tabularnewline \hline
-		11		& FTP daemon				\tabularnewline \hline
-		12		& NTP subsystem			\tabularnewline \hline
-		13		& log audit				\tabularnewline \hline
-		14		& log alert				\tabularnewline \hline
-		15		& clock daemon			\tabularnewline \hline
-		16		& local use 0			\tabularnewline \hline
-		17		& local use 1			\tabularnewline \hline
-		...		& ...					\tabularnewline \hline
-		23		& local use 7			\tabularnewline \hline
+	\caption[Tabulka facilit podle RFC 3164]{Seznam facilit dle RFC 3164.~\cite{RFC3164}}
+	\begin{tabular}{|l|l|l|}\hline
+		Číselný kód & Facility & Původ zpráv \tabularnewline \hline \hline
+		0		& kern & Zprávy jádra systému	\tabularnewline \hline
+		1		& user & Generované uživatelem	\tabularnewline \hline
+		2		& mail & Generované emailovým systémem			\tabularnewline \hline
+		3		& daemon & Systémoví démoni			\tabularnewline \hline
+		4		& auth & Zprávy autorizačního/zabezpečovacího charakteru		\tabularnewline \hline
+		5		& syslog & Generované syslogem	\tabularnewline \hline
+		6		& lpr & Tiskový systém		\tabularnewline \hline
+		7		& news & Network news systém		\tabularnewline \hline
+		8		& uucp & UUCP systém			\tabularnewline \hline
+		9		& cron & Zprávy plánovacího systému Cron			\tabularnewline \hline
+		10		& security & security/authorization messages			\tabularnewline \hline
+		11		& ftp & FTP démon				\tabularnewline \hline
+		12		& ntp & NTP systém			\tabularnewline \hline
+		13		& logaudit & Log audit				\tabularnewline \hline
+		14		& logalert & Log alert				\tabularnewline \hline
+		15		& clock & Clock démon			\tabularnewline \hline
+		16		& local0 & Lokální zprávy (0)			\tabularnewline \hline
+		17		& local1 & Lokální zprávy (1)			\tabularnewline \hline
+		\ldots	& \ldots				\tabularnewline \hline
+		23		& local7 & Lokální zprávy (7)			\tabularnewline \hline
 	\end{tabular}
 \end{table}
+
+\subsection{Header}
+Tato část zprávy obsahuje časovou značku a identifikaci zdroje (podle IP adresy nebo hostname). Přesnou podobu Headeru specifikují dokumenty RFC 3164 a 5424 odlišně. Zatímco starší dokument definuje přesnou podobu časové značky, tak novější specifikace dovoluje různé formáty. Díky tomu není zaručena plná zpětná kompatibilita.
+
+\subsection{MSG}
+Část Msg pokrývá zbývající část syslog paketu. Obecně tam nalézáme různé zbývající informace o procesu generujícího danou zprávu a pak samozřejmě samotný text zprávy.
 
 \chapter{Analýza a návrh}
 \begin{figure}[H]
@@ -155,12 +161,13 @@ V této práci je vžy při zmíňce o syslog protokolu myšlen standard RFC 542
 	\caption[Diagram nasazení původního řešení]{Diagram nasazení původního řešení}
 \end{figure}
 
-\section{Současné řešení}
-V této kapitole jsou uvedeny a popsány jednotlivé pro tuto práci důlužité komponenty současného řešení.
+\section{Původní řešení}
+V této kapitole jsou uvedeny a popsány jednotlivé pro tuto práci důlužité komponenty původního řešení.
 
 \subsection{HW specifikace STB EKT DID7006}
 \begin{description}
-  \item [CPU:] ARM 9 Ali M3733
+\setlength\itemsep{-1ex}
+  \item [CPU:] ARM 9 Ali M3733 (1GHz Dual core)
   \item [GPU:] Mali 400
   \item [RAM:] 512MB DDR3
   \item [Perzistentní paměť:] 512MB NAND Flash
@@ -221,12 +228,11 @@ Jeho slabiny shledávám v nedostatečné dokumentaci a ve specifických přípa
 Pouhým nasazením jakéhokoli známého logovacího démonu není možné splnit všechny vytyčené technické požadavky. V případě ponechání původního BusyBox syslogd démonu by pro splnění technických požadavků bylo nutno doimplementovat tolik funkcionalit, že by to výrazně přesahovalo rozsah bakalářské práce.
 Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či Rsyslog. Oba totiž poskytují námi požadované funkcionality. Syslog-ng však většinu z nich poskytuje pouze v placené closed-source verzi a proto jsem se rozhodl pro Rsyslog.
 
+\section{Šifrování zpráv}
 
-\subsection{RELP}
-TODO
-\subsection{Šifrování zpráv}
-TODO
-\subsection{Komprese zpráv}
+
+
+\section{Komprese zpráv}
 TODO
 
 
@@ -296,14 +302,14 @@ kern.crit                    /dev/console
 kern.info;kern.!err          /var/adm/kernel-info
 \end{lstlisting}
 
-Díky této podpoře je možno velice snadno migrovat na Rsyslogd.
+Díky této podpoře je možno velice snadno migrovat z Syslogd na Rsyslogd.
 Pro využití i jiných než základních funkcí Rsyslogu, je nutno k nakonfigurování pravidel použít syntaxi jazyku Rainerscript.
 
 \subsection{Rainerscript}
 Rainerscript~\cite{RainerScript} je skriptovací jazyk navržený ke správě síťových událostí (převážně nakládání se syslog zprávami) a dále ke konfiguraci softwaru, pro který je používán.
 Tento jazyk je totiž teoreticky použitelný v ruzných typech softwarů, nicméně v době psaní této práce byl vyvíjen a reálně pužíván pouze v Rsyslogu.
 
-Jedná se o netypový jazyk, který poskytuje podporu regulárních výrazů~\cite{RainerScriptPropertyReplacer}, zná všechny běžné operátory pro práci s číselnými nebo textovými proměnnými jako např ==, !=, <>, <, >, <=, >=, +, -, *, /, \% a podporuje užitečné funkce především pro práci s textovými řetězci.
+Jedná se o netypový jazyk, který poskytuje podporu regulárních výrazů~\cite{RainerScriptPropertyReplacer} a má nadefinované užitečné funkce především pro práci s textovými řetězci.
 Podrobnosti jsou k nalezení v dokumentu s formální definicí jazyka~\cite{RainerScriptFormalDefinition}.
 
 \subsection{rsyslog.conf}
@@ -383,17 +389,18 @@ Rsyslog neumožňuje nastavení maximálního toku sítě, avšak poskytuje mož
   \item [queue.dequeuebatchsize:] Maximální počet zpráv vystupujících z fronty v jeden okamžik.
   \item [queue.dequeueslowdown:] Zpoždění (v $\mu$s) mezi odesíláním jednotlivých zpráv (v případě queue.dequeuebatchsize>1 bloků zpráv).
 \end{description}
-
-Queue.size tedy nastavíme stejně na 800 zpráv. Nyní je třeba zjistit parametry pro dequeuebatchsize a dequeueslowdown. Z měření bylo zjištěno, že průměrná velikost UDP paketu se zprávou ze STB má 150B. Pomocí níže zobrazených vzroců jsme snadno spočetli požadované zpoždění v mikrosekundách, aby zátěž linky nepřekročila 150 kbit/s.
+Queue.size tedy nastavíme stejně na 800 zpráv.
+Pro dequeuebatchsize jsem zvolil hodnotu 5 - TODO, proč vlastně zrovna 5..
+Nyní je třeba zjistit parametry pro dequeueslowdown. Z měření bylo zjištěno, že průměrná velikost UDP paketu se zprávou ze STB má 150~B. Pomocí níže zobrazených vzroců jsme snadno spočetli požadované zpoždění v mikrosekundách, aby zátěž linky nepřekročila 150 kbit/s.
 \begin{description}
-  \item $počet~zpráv=\frac{bandwith}{velikost~paketu}=\frac{150*1000~[b]}{8*150~[b]}=125$
-  \item $zpoždění=\frac{1 sekunda}{počet zpráv}=\frac{1 000 000}{125}= 8000 [\mu$$s]$
+  \item $počet~zpráv=\frac{bandwith}{velikost~paketu}=\frac{150~*~1~000~[b]}{8~*~150~[b]}=125$
+  \item $zpoždění=\frac{1~sekunda}{počet~zpráv}=\frac{1~000~000}{125}*dq.~slowdown~=~8~000~*~5~=~40~000~[\mu$$s]$
 \end{description}
 Ještě zbývá zvolit typ fronty, kde kvůli důrazu na rychlost byla zvolena implementace založená na spojovém seznamu.
 Výsledný kód pro akci s In-memory frontou s nastaveným rate-limitingem vypadá následovně:
 \begin{lstlisting}
 action(type="omfwd" target="192.168.1.10" port="5514"
-queue.size="800" queue.dequeueslowdown="8000"
+queue.size="800" queue.dequeueslowdown="40000"
 queue.dequeuebatchsize="5" queue.type="LinkedList" )
 \end{lstlisting}
 
@@ -584,7 +591,96 @@ Skript na vstupu očekává sudý počet parametrů, kde každý sudý parametr 
 Skript vyhledá v konfiguračním souboru rsyslog.conf řádek s danou komponentou a přenastaví maximální povolenou severitu. Skript kontrolojue správnost vstupních parametrů pro zabránení neočekávaného chování programu.
 
 \chapter{Testování}
-TODO
+TODO úvod do testování. Co, jak, proč..
+
+Pro účely testování byl použit Apple Macbook 13 (dále jen PC) s následující konfigurací.
+\subsection*{kofigurace PC}
+\begin{description}
+\setlength\itemsep{-1ex}
+  \item [CPU:] 2,7 GHz Intel Core i5
+  \item [RAM:] 8GB DDR3
+  \item [OS:] OS X 10.11.4
+\end{description}
+
+\subsection*{Testovací syslog server}
+Pro účely testování byla na Wifi routeru Huawei HG622u nakonfigurována lokální síť (jakožto simulace reálných serverů zadavatele). Na výše zmíněném PC, byl nakonfigurován logovací démon syslog-ng pro sběr logů od STB pomocí definování naslouchání na daném UDP portu. PC je tedy v testech použito jakožto syslog server.
+
+\subsection{Test zahlcení zprávami za běžného provozu}
+ V tomto testu srovnávám vytížení linky nového a starého logovacího řešení při běžném provozu STB. 
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.44]{images/test-1h-syslogd-default}
+	\caption[Syslogd]{Syslogd}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.44]{images/test-1h-rsys-default}
+	\caption[Rsyslogd]{Rsyslogd}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.44]{images/test-1h-rsys-solidoff}
+	\caption[Rsyslogd - aplikace Solid vypnuta]{Rsyslogd - aplikace Solid vypnuta}
+\end{figure}
+
+\subsection*{Zhodnocení}
+Jak je vidět z prvních dvou grafů, nové řešení postavené na rsyslogd přijíma méně logů. Je to způsobeno jeho konfigurací, v níž je nastaveno pravidlo (viz kapitola 4.3.3.1), kterým se zahazují určité nepotřebné zprávy. Na STB totiž běží aplikace, již zadavatel nemá možnost upravit, která loguje mimo jiné i nepotřebné zprávy. V původním řešením podobné pravidlo nebylo možné jakkoliv nastavit.
+Dle Wiresharku tak nové řešení v průměru přijíma 8,6 paketů za sekundu oproti 9 paketům za sekundu v původním řešení.
+
+V třetím grafu je pro zajímavost znázorněno zahlcení linky při použití nového řešení po zakázání zpráv od komponenty solid.
+Chci tím demonstrovat, že zadavatel má v novém řešení možnost si upravit filtrování zpráv podle různých kritérií a může tak razantně snížit zahlcení sítě.
+
+\section{Test škrcení zpráv}
+V tomto testu se ověřuje funkčnost rate-limitingu.
+K tomu je použit skript generující obrovské množství logů v krátkém časovém intervalu. Funkce gen\_messages() pomocí příkazu logger posíla 1000 zpráv syslog démonu. Tato funkce je navíc volána v deseti paralelních instancích.
+
+\begin{lstlisting}
+#!/bin/sh
+gen_messages() {
+	for i in $(seq 1000); do
+		logger 	"Zprava o 100B..."
+	done
+}
+for i in $(seq 10); do
+	gen_messages &
+done
+\end{lstlisting}
+
+\subsection*{}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.44]{images/test-1h-rsys-solidoff}
+	\caption[Vytížení bez zapnutého škrcení zpráv]{Vytížení bez zapnutého škrcení zpráv}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.44]{images/test-1h-rsys-solidoff}
+	\caption[Vytížení na původním syslogd]{Vytížení na původním syslogd}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.44]{images/test-1h-rsys-solidoff}
+	\caption[Vytížení na rsyslogu s aktivovaným škrcením zpráv]{Vytížení na rsyslogu s aktivovaným škrcením zpráv}
+\end{figure}
+
+
+\subsection*{Zhodnocení}
+První graf znázorňuje, kolik bitů textu za sekundu daný skript ve skutečnosti generuje.
+Zbylé dva grafy už pouze demonstrují, že škrcení funguje správně. Tedy, že tok bitů za sekundu nepřekročí hranici 150 000.
+
+Skript simuluje chování běžných aplikací STB tím, že zprávy které generuje, mají délku odpovídající průměrné délce zpráv generovaných STB.
+TODO -- grafy pouze ilustrační, protože realita je jiná. - TODO
+
+\subsection{Vytížení systému}
+
+\section{Zátěžový test v běžných podmínkách}
+TODO test využití CPU, old vs new.
+
 
 \begin{conclusion}
 
@@ -602,7 +698,8 @@ TODO
 	\item[CPU] Central Processing Unit
 	\item[dmd] Download manager daemon
 	\item[GPU] Graphics processing unit
-	\item[OS] Operační systém
+	\item[OS] Operating system
+	\item[PC] Personal computer
 	\item[RAM] Random Access memory
 	\item[RFC] Request for Comments
 	\item[SDK] Software Development Kit
