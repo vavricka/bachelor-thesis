@@ -4,13 +4,111 @@
 \usepackage{graphicx}
 \usepackage{dirtree}
 \usepackage{float}
+\usepackage{color}
 \usepackage{listings}
 
-\lstset{basicstyle=\ttfamily,
-	showstringspaces=false,
-	commentstyle=\color{red},
-	keywordstyle=\color{blue}
+\lstdefinelanguage{RainerScript}
+{
+  morekeywords={
+    module, if, then, while, for, load, set, unset,
+	template, name, type, string, action, stop, and,
+    from, to, var, stringtobedeleted, severity
+  },
+  sensitive=false,
+  morecomment=[l]{\#},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]"
 }
+
+\lstdefinelanguage{PKGBuild}
+{
+  morekeywords={
+    pkgname, pkgver, arch, depends, source, md5sums,
+    build, package
+  },
+  sensitive=false,
+  morecomment=[l]{\#},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]"
+}
+
+%\lstdefinestyle{numbers} {numbers=left, stepnumber=1, numberstyle=\tiny, numbersep=10pt}
+%\lstdefinestyle{MyFrame}{backgroundcolor=\color{white},frame=shadowbox}
+
+
+
+\lstdefinestyle{AshStyle} %{language=Bash,style=numbers,style=MyFrame,frame=none,backgroundcolor={}}
+{language=Bash,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=single,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\lstdefinestyle{RainerScriptSimpleStyle} %{language=Bash,style=numbers,style=MyFrame,frame=none,backgroundcolor={}}
+{language=RainerScript,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=lines,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\lstdefinestyle{RainerScriptStyle} %{language=Bash,style=numbers,style=MyFrame,frame=none,backgroundcolor={}}
+{language=RainerScript,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=single,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\lstdefinestyle{PKGBuildStyle} %{language=Bash,style=numbers,style=MyFrame,frame=none,backgroundcolor={}}
+{language=PKGBuild,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=single,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
 
 \department{Katedra softwarového inženýrství}
 \title{Flexibilní logování pro embedded Linuxové systémy}
@@ -250,12 +348,11 @@ Jedná se o shellový script obsahující informace potřebné pro sestavení je
 
 \subsection{Sestavení a instalace aplikací}
 Jako příklad zde uvádím soubor PKGBUILD pro sestavení a instalaci Rsyslogu. V podobném duchu jsou napsány i skripty pro ostatní aplikace a knihovny.
-\begin{lstlisting}
+\begin{lstlisting}[style=PKGBuildStyle]
 pkgname=rsyslog
 pkgver=8.16.0-nangu-0.3
 arch=('armv7h' 'armv7sp')
-depends=('zlib' 'libestr' 'libee' \
-'liblogging' 'libfastjson')
+depends=('zlib' 'libestr' 'libee' 'liblogging' 'libfastjson')
 source=${pkgname}-${pkgver}.tar.gz
 md5sums=('SKIP')
 
@@ -294,7 +391,7 @@ Příkazem \uv{gu install <název-vzniklého-balíčku.tar.xz>} nainstalujeme ba
 \section{Konfigurace Rsyslogu}
 Rsyslog se řídí podle pravidel specifikovaných v konfiguračním souboru /etc/rsyslog.conf. Za použití tzv. compatibility módu~\cite{Rsyslog-comp-mode} podporuje syntaxi známou z dříve na linuxu hojně užívaného démonu sysklogd. Níže je uveden příklad konfiguračního souboru syslog.conf~\cite{Syslog-conf} pro sysklogd. Na levo je možno specifikovat kritéria pro filtraci zpráv podle jejich severity a facility. Na pravo je pak umístění, kam zprávy odesílat.
 
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptStyle]
 *.=crit;kern.none            /var/adm/critical
 kern.*                       /var/adm/kernel
 kern.crit                    @finlandia
@@ -315,33 +412,30 @@ Podrobnosti jsou k nalezení v dokumentu s formální definicí jazyka~\cite{Rai
 \subsection{rsyslog.conf}
 Níže je uvedena ukázka RainerScript konfiguračního souboru, kde jsou předvedeny základní konstrukce používané při jeho tvorbě.
 
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 module(load="NazevModulu")
 \end{lstlisting}
 Na začátku souboru je možné načíst různé moduly, poskytující doplňující funkcionality. Příkladem může být modul imklog čtoucí zprávy z kernelu nebo omfwd umoňující posílat zprávy zkrze UDP nebo TCP protokoly. Je nutno poznamenat, že některé moduly nejsou defaultně kompilovány spolu s rsyslogem a je proto nutno přidat příkazu compile parametr $-$$-$enable$-$<název\_modulu>.
 
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 set $!Promenna="hodnota";
 unset $!Promenna;
 \end{lstlisting}
 Pomocí klíčovích slov set a unset je možné deklarovat a rušit proměnné. Ty začínají znaky \$! a příkaz je nutno ukončit středníkem.
 
-\begin{lstlisting}
-template(name="nazev-sablony" type="string"
-	string="<%pri%>%TIMESTAMP:::date-rfc3164%
-	%$!macaddr% %syslogtag% id=%$!counter%%msg%\n"
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
+template(name="nazev-sablony" type="string" string="<%pri%>%TIMESTAMP:::date-rfc3164% %$!macaddr% %syslogtag% id=%$!counter%%msg%\n"
 	)
 \end{lstlisting}
 Šablony definují podobu zpráv. Do proměnné string lze vložit libovolné textové řetězce. Proměnná mezi dvojicí znaků procento je nahrazena jejich obsahem. Použity mohou být vlastní lokální proměnné a nebo tzv. replacement proměnné, vztahující se typicky k syslog zprávě, ve kterých je uložena např. severita nebo například čas odeslání. Nejdůležitější je proměnná msg, kde je uložen text zprávy.
 
-\begin{lstlisting}
-action(template="nazev-sablony" type="omfwd"
-	Target="192.168.1.10" Port="5514" Protocol="udp" )
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
+action(template="nazev-sablony" type="omfwd" Target="192.168.1.10" Port="5514" Protocol="udp" )
 \end{lstlisting}
 
 Pomocí akcí se volají jednotlivé moduly. Ty mohou mít různé parametry, které upravují jeho chování. V ukázce výše se volá modul omfwd sloužící k posílání zpráv skrze síť. Parametry specifikují konkrétní IP a port sítě, typ protokolu a název šablony, která upravuje formát zpráv.
 
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 if $programname == 'solid' and $syslogseverity > 5
 then {
 	#nejaka akce
@@ -398,22 +492,20 @@ Nyní je třeba zjistit parametry pro dequeueslowdown. Z měření bylo zjiště
 \end{description}
 Ještě zbývá zvolit typ fronty, kde kvůli důrazu na rychlost byla zvolena implementace založená na spojovém seznamu.
 Výsledný kód pro akci s In-memory frontou s nastaveným rate-limitingem vypadá následovně:
-\begin{lstlisting}
-action(type="omfwd" target="192.168.1.10" port="5514"
-queue.size="800" queue.dequeueslowdown="40000"
-queue.dequeuebatchsize="5" queue.type="LinkedList" )
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
+action(type="omfwd" target="192.168.1.10" port="5514" queue.size="800" queue.dequeueslowdown="40000" queue.dequeuebatchsize="5" queue.type="LinkedList" )
 \end{lstlisting}
 
 
 \subsection{Razítkování zpráv}
 Požadavkem zadavatele bylo značit všechny zprávy vzestupnou řadou čísel kvůli rozpoznání případného výpadku některých zpráv.
 Byl pro to použit modul mmsequence~\cite{RsyslogMmsequence}, který byl nastaven jako je ukázáno v kódu níže.
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 module(load="mmsequence")
 action(	type="mmsequence"
-            from="1"
-            to="1048576"   # 2^20
-            var="$!counter" )
+		from="1"
+		to="1048576" # 2^20
+		var="$!counter" )
 \end{lstlisting}
 Proměnné \uv{\$!counter} je tak přiřazeno číslo \uv{1} a s každou další příchozí zprávou se číslo zvýší o \uv{1} dokud nenarazí na maximální hodnotu specifikovanou parametrem \uv{to}, kdy je číslo vyresetováno na původní hodnotu \uv{1}.
 Tato proměnná je následně používána v šablonách a je tak připojena k tělu každé zprávy.
@@ -423,14 +515,12 @@ Požadavkem zadavatele je, aby zprávy měli identický formát, jako tomu bylo 
 \\
 \\
 Vzor zprávy:
-\begin{lstlisting}
-May  1 19:04:54 cc-b8-f1-04-17-89 solid:
-id=8853 Player Time [00:06:56.96]
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
+May  1 19:04:54 cc-b8-f1-04-17-89 solid: id=8853 Player Time [00:06:56.96]
 \end{lstlisting}
 Formát:
-\begin{lstlisting}
-<PRI><RFC3164 date> <STB mac address> <component>:
-<id=NUM>  <message>
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
+<PRI><RFC3164 date> <STB mac address> <component>: <id=NUM>  <message>
 \end{lstlisting}
 
 Můžeme si povšimnout, že vzorová zpráva začíná datumem a přitom formát zprávy obsahuje na prvním místě číslo PRI a až poté následuje datum. Hodnota PRI totiž není viditelná a slouží logovacímu démonu, který z ní dokáže vypočítat severity a facility zprávy.
@@ -440,10 +530,8 @@ Můžeme si povšimnout, že vzorová zpráva začíná datumem a přitom formá
 
 \subsubsection*{Implementace šablony}
 Základní šablona pro zprávy lokálně ukládané na STB:
-\begin{lstlisting}
-template( name="local-template" type="string"
-string="%TIMESTAMP:::date-rfc3164% %\$!macaddr%
-%syslogtag% id=%\$!counter%%msg%\n" )
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
+template( name="local-template" type="string" string="%TIMESTAMP:::date-rfc3164% %\$!macaddr% %syslogtag% id=%\$!counter%%msg%\n" )
 \end{lstlisting}
 
 \begin{description}
@@ -472,7 +560,7 @@ Tento modul slouží ke smazání zadaného podřetězce z těla zprávy.
 \\
 \\
 Použití:
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 module(load="mmdelstr") 
 action(type="mmdelstr" stringtobedeleted="Some string")
 \end{lstlisting}
@@ -484,7 +572,7 @@ Mmsevrewrite dokáže měnit severitu zadané zprávy. Rsyslog v základu tuto f
 \\
 \\
 Použití:
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 module(load="mmsevrewrite")
 action(type="mmsevrewrite" severity="debug")
 \end{lstlisting}
@@ -499,7 +587,7 @@ Pravidlo, které rozpozná zprávy podle zadané komponenty a obsahu zprávy a t
 \\
 \\
 Implementace pravidla:
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptStyle]
 if $programname == 'solid' and \
 $msg contains "Player_GetState" then
 {	
@@ -524,7 +612,7 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 \end{table}
 
 Implementace pravidla:
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptStyle]
 if $msg contains "mTRACE: " then
 {
 	action(type="mmsevrewrite" severity="debug")
@@ -541,12 +629,12 @@ Zprávám pocházejícím z komponenty solid je třeba smazat zadaný podřetěz
 \\
 \\
 Implementace pravidla:
-\begin{lstlisting}
-if $programname == 'solid' and $msg contains \
-":[notificationFromPlayer]: INFO: " then
+\begin{lstlisting}[style=RainerScriptStyle]
+if $programname == 'solid' and $msg contains
+		":[notificationFromPlayer]: INFO: " then
 {
-action(type="mmdelstr" \ 
-stringtobedeleted=":[notificationFromPlayer]: INFO: ")
+	action(type="mmdelstr" \ 
+	stringtobedeleted=":[notificationFromPlayer]: INFO: ")
 }
 \end{lstlisting}
 
@@ -569,15 +657,13 @@ Jazyky jako Perl nebo Python se jeví jako ideální pro napsánání skriptu na
 \subsection{Rozhraní skriptu}
 První možností je napsat API ve formě scriptu, který přijímá jednotlivé názvy komponent a jim příslušící maximální povolenou severitu jako parametry.
 
-\begin{lstlisting}
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 set_log_verbosity.sh [component] [severity] ...
 \end{lstlisting}
 
 Jako druhá možnost připadá v úvahu skript, který čte seznam jednotlivých komponent a maximálních povolených severit ze souboru, který má následující formát:
 
-\begin{lstlisting}
-/etc/logging.conf
-
+\begin{lstlisting}[style=RainerScriptSimpleStyle]
 component1  = DEBUG
 componentXY = INFO
 ...
@@ -637,7 +723,7 @@ Chci tím demonstrovat, že zadavatel má v novém řešení možnost si upravit
 V tomto testu se ověřuje funkčnost rate-limitingu.
 K tomu je použit skript generující obrovské množství logů v krátkém časovém intervalu. Funkce gen\_messages() pomocí příkazu logger posíla 1000 zpráv syslog démonu. Tato funkce je navíc volána v deseti paralelních instancích.
 
-\begin{lstlisting}
+\begin{lstlisting}[style=AshStyle]
 #!/bin/sh
 gen_messages() {
 	for i in $(seq 1000); do
