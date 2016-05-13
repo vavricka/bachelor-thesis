@@ -32,11 +32,6 @@
   morestring=[b]"
 }
 
-%\lstdefinestyle{numbers} {numbers=left, stepnumber=1, numberstyle=\tiny, numbersep=10pt}
-%\lstdefinestyle{MyFrame}{backgroundcolor=\color{white},frame=shadowbox}
-
-
-
 \lstdefinestyle{AshStyle} %{language=Bash,style=numbers,style=MyFrame,frame=none,backgroundcolor={}}
 {language=Bash,                % choose the language of the code
 basicstyle=\footnotesize,       % the size of the fonts that are used for the code
@@ -49,6 +44,21 @@ showspaces=false,               % show spaces adding particular underscores
 showstringspaces=false,         % underline spaces within strings
 showtabs=false,                 % show tabs within strings adding particular underscores
 frame=single,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\lstdefinestyle{AshSimpleStyle} %{language=Bash,style=numbers,style=MyFrame,frame=none,backgroundcolor={}}
+{language=Bash,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=lines,           % adds a frame around the code
 tabsize=2,          % sets default tabsize to 2 spaces
 captionpos=b,           % sets the caption-position to bottom
 breaklines=true,        % sets automatic line breaking
@@ -109,7 +119,6 @@ breakatwhitespace=false,    % sets if automatic breaks should only happen at whi
 escapeinside={\%*}{*)}          % if you want to add a comment within your code
 }
 
-
 \department{Katedra softwarového inženýrství}
 \title{Flexibilní logování pro embedded Linuxové systémy}
 \authorGN{David}
@@ -117,8 +126,8 @@ escapeinside={\%*}{*)}          % if you want to add a comment within your code
 \authorWithDegrees{David Vavřička}
 \supervisor{Ing. Matěj Laitl}
 \acknowledgements{Doplňte, máte-li komu a za co děkovat. V~opačném případě úplně odstraňte tento příkaz.}
-\abstractCS{Doplňte}
-\abstractEN{Sem doplňte ekvivalent abstraktu Vaší práce v~angličtině.}
+\abstractCS{Cílem této bakalářské práce je analýza, návrh a následná implementace nového logovacího řešení pro Set-top box EKT DID7006mTF. Hlavími požadavky jsou snížení vytížení sítě a umožnění vzdálené změny konfigurace logování servisním technikům.}
+\abstractEN{This bachelor’s thesis is focused on analyzing, designing and implementing a new logging solution for Set-top box EKT DID7006mTF. Main requirements are reduction of network load and allowing service technicians remotely change settings of logging. }
 \placeForDeclarationOfAuthenticity{V~Praze}
 \declarationOfAuthenticityOption{4} %volba Prohlášení (číslo 1-6)
 \keywordsCS{logování, vestavěné systémy, logovací démoni, Linux, Rsyslog}
@@ -127,38 +136,37 @@ escapeinside={\%*}{*)}          % if you want to add a comment within your code
 \begin{document}
 
 \begin{introduction}
-
+Zadavatelem práce je společnost vyvíjející a provozující set-top boxy pro sledování internetové televize.
+Těchto set-top boxů běží v domácnostech zákazníků deseti tisíce a každý z nich odesíla stovky zpráv za minutu o svém stavu na servery zadavatele. Jejich zpracování představuje pro servery velkou zátěž a proto byl sepsán sepsal seznam technických požadavků, jež mají za cíl snížit objem logů posílaných na servery.
+Tato práce se zabývá analýzou těchto požadavků a výběrem vhodného řešení.
+ 
+Na základě analýzy je posléze provedena implementace, v které je kladen důraz na použití pouze zdarma šířitelných open-source projektů nebo implementace svých vlastních.
+ 
+V závěru práce je výsledek implementace podroben testům a porovnán oproti původnímu stavu.
 \end{introduction}
 
 \chapter{Technické požadavky}
 Cílem je upravit logovací řešení pro set-top box EKT DID7006mTF~\cite{ekt7006} tak, aby splňovalo technické požadavky popsané v této kapitole. Řešení musí fungovat a být otestováno na zmíněném modelu set-top boxu a pokud možno by mělo být přenositelné i na jiné typy set-top boxů.
-Požadavky jsou rozděleny na základní a rozšířené. Rozšířené požadavky není nutno implementovat.
+Původním záměrem bylo rozdělit požadavky na základní a rozšířené. Nakonec zadavatel rozhodl, že všechny níže zmíněné požadavky jsou základní a tedy jejich implementace je nutná pro splnění práce.
 
-\section{Základní technické požadavky}
-
-\subsection{Snížení objemu logů}
+\section*{Snížení objemu logů}
 Je žádoucí umožnit snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. A to tak, že zadavatel bude schopen nadefinovat pro každou komponentu úroveň severity zpráv, od které mají být posílány na server. Výchozí nastavení dodá zadavetel.
 
-\subsection{Vzdálená konfigurace}
+\section*{Vzdálená konfigurace}
 Technické řešení musí být schopno za běhu pomocí SHELL-ového API měnit maximální severitu zpráv pro jednotlivé komponenty a dále toto API musí umožnit nastavit výchozí severitu, která se použije pro komponenty ji nemají explicitně nastavenou. Takto změněné nastavení musí být perzistentní i po restartu STB. Výchozí nastavení se obnoví až po factory resetu. API navrhne dle své libovůle sám řešitel.
 
-\subsection{Rate-limiting odesílaných zpráv}
+\section*{Rate-limiting odesílaných zpráv}
 Nové logovací řešení musí být schopné provádět rate-limiting odesílanych zpráv tak, aby nepřekročilo maximální vyhrazenou šířku pásma. Naivní rate-limiting je i v existujícím řešení, řešitel navrhne výchozí nastavení nového řešení tak, aby přibližně odpovídalo současnému chování. 
 
-\subsection{Formát logů}
+\section*{Formát logů}
 Je nutno zachovat formát logů jako ho má původní řešení, aby se jednalo o drop-in replacement bez nutnosti jakkoli měnit konfiguraci serveru, který sbírá logy od set-top boxů.
 
-\subsection{Razítkování zpráv}
+\section*{Razítkování zpráv}
 Každé zprávě se musí přidat textový prefix id=N, kde N monotonicky roste s každou zprávou.  To slouží pro detekci ztracených zpráv. Id přeteče po dvaceti bitech. Po rebootu STB id znovu začíná od 1.
 
-\subsection{Post-processing zpráv}
+\section*{Post-processing zpráv}
 Zadavatel má pouze částečnou kontrolu nad zprávami generovanými aplikacemi na set-top boxu, například nedokáže ve všech případech eliminovat dlouhé prefixy u zpráv. Je proto nutno takové prefixy rozpoznat a vhodně odfiltrovat před odesláním. Ze stejného důvodu mají některé zprávy nevhodně vyplněnou severitu a položku app-name. Jejich správné hodnoty jsou uloženy v textu zprávy, jejíž formát je pro jednotlivé skupiny zpráv konstantní. Řešení bude schopné tyto údaje z těla zprávy extrahovat a nahradit jimi původní metadata. Tato pravidlo musí být možné definovat a měnit bez nutnosti nového sestavení softwaru. 
 Řešitel vytvoří pro ukázku 3 pravidla, která budou sloužit zadavateli jako šablony pro možná budoucí filtrovací pravidla.
-
-\section{Rozšířené technické požadavky}
-
-\subsection{Komprese zpráv}
-Bylo by vhodné zvážit pro a proti komprese zpráv. Vyplatí se ušetřená přenesená data oproti režiji spojené s kompresí a dekompresí zpráv?
 
 \chapter{Logování v linuxových systémech}
 Systémoví administrátoři se musí umět vypořádat s množstvím nejrůznějších zpráv ze systémových komponent nebo například ze vzdálených systémů.
@@ -186,7 +194,7 @@ Mírných změn doznal také formát zpráv, který je možno strukturovaně roz
 \begin{figure}[H]
 	\centering
 	\includegraphics[scale=0.3]{images/syslog-message-format}
-	\caption[Formát syslog zprávy]{Formát syslog zprávy}
+	\caption[Formát syslog zprávy]{Formát syslog zprávy (dle RFC 3164 i 5424)}
 \end{figure}
 
 Syslog zpráva se skládá ze 3 částí jak je pro lepší představu graficky vyobrazeno na obrázku výše.
@@ -194,12 +202,8 @@ Syslog zpráva se skládá ze 3 částí jak je pro lepší představu graficky 
 \subsection{Část PRI}
 PRI se skládá z jedno až tří-místného decimálního čísla PRIVAL ohraničeného symboly~\uv{<}~na začátku a~\uv{>}~na konci.
 PRIVAL má v sobě zakódované číselné hodnoty parametrů zprávy označovaných jako Severity a Facility.
-
-
 $$Prival= 8*Facility+Severity$$
-
-
-Facility určuje zdroj logů a Severity jejich důležitost (tedy zda se jedná například pouze o debug hlášku nebo naopak o důležitou zprávu například o pádu programu). Na základě těchto dvou hodnot syslog démon provádí základní filtraci zpráv.
+Facility určuje zdroj logů a Severity jejich důležitost (tedy zda se jedná například pouze o ladící zprávu nebo naopak o důležitou zprávu například o pádu programu). Na základě těchto dvou hodnot syslog démon provádí základní filtraci zpráv.
 Důležitým poznatkem je, že formát PRI je shodný podle dokumentů RFC 5424 i 3164.
 
 \begin{table}[ht]
@@ -214,7 +218,7 @@ Důležitým poznatkem je, že formát PRI je shodný podle dokumentů RFC 5424 
 		4		& Warning	&	Upozornění na hrozící chybu \tabularnewline \hline
 		5		& Notice		&	Neobvyklý stav, ale ne chybový \tabularnewline \hline
 		6		& Informational & Informační zpráva \tabularnewline \hline
-		7		& Debug		&	Debugovací zpráva \tabularnewline \hline
+		7		& Debug		&	Ladící zpráva \tabularnewline \hline
 	\end{tabular}
 \end{table}
 
@@ -250,17 +254,19 @@ Důležitým poznatkem je, že formát PRI je shodný podle dokumentů RFC 5424 
 Tato část zprávy obsahuje časovou značku a identifikaci zdroje (podle IP adresy nebo hostname). Přesnou podobu Headeru specifikují dokumenty RFC 3164 a 5424 odlišně. Zatímco starší dokument definuje přesnou podobu časové značky, tak novější specifikace dovoluje různé formáty. Díky tomu není zaručena plná zpětná kompatibilita.
 
 \subsection{MSG}
-Část Msg pokrývá zbývající část syslog paketu. Obecně tam nalézáme různé zbývající informace o procesu generujícího danou zprávu a pak samozřejmě samotný text zprávy.
+Část Msg pokrývá zbývající část syslog paketu. Jejím obsahem jsou různé zbývající informace o procesu generujícího danou zprávu a pak samozřejmě samotný text zprávy.
 
-\chapter{Analýza a návrh}
-\begin{figure}[H]
+\chapter{Analýza}
+Na začátku této kapitoly je popsán STB a na něm běžící pro tuto práci důležité aplikace.
+Následuje popis infrastuktury, kde je znázorněna komonikace mezi STB a servery zadavatele.
+Kapitolu zakončuje analýza řešení jednotlivých technických požadavků a srovnání logovacích démonů.
+
+\section{Původní řešení}
+\begin{figure}[ht]
 	\centering
 	\includegraphics[scale=0.5]{images/diagram-nasazeni-puvodniho-reseni}
 	\caption[Diagram nasazení původního řešení]{Diagram nasazení původního řešení}
 \end{figure}
-
-\section{Původní řešení}
-V této kapitole jsou uvedeny a popsány jednotlivé pro tuto práci důlužité komponenty původního řešení.
 
 \subsection{HW specifikace STB EKT DID7006}
 \begin{description}
@@ -292,24 +298,21 @@ Aplikační server se stará o business logiku, například poskytuje uživateli
 AS není možné v této práci jakkoli měnit. Je nutné zachovat kompatibilitu.
 
 \subsection{Servery pro sběr logů}
-Zadavatel provozuje cluster serverů sbírajících logy od statisíců STB. Běží na nich rsyslog nakonfigurovaný pro co nejlepší výkonost.
+Zadavatel provozuje cluster serverů sbírajících logy od statisíců STB. Běží na nich Rsyslog nakonfigurovaný pro co nejvyšší propustnost.
 
 \section{Nové řešení}
+Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího démona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji.
+Je tedy nutno problém řešit na straně set-top boxu kde původní řešení je postaveno na busy-box syslogd. Nabízí se možnost upravit fungování tím způsobem, aby se logy s nízkou severitou už na set-top boxu zahazovaly a pouze v případě potřeby bylo umožněné na dálku změnit konfiguraci démona tak, aby se povolilo logování pro logy s nastavenou danou komponentou a severitou. To vše přes SHELL-ové API.
+Součástí zadání je ale i implementovat rate-limiting zpráv, aby nedocházelo k zahlcení linky. Takovou možnost prostý syslogd neposkytuje a je proto nutno zvážit napsání vlastního démona, nasazení jiného, vyspělejšího logovacího démona nebo rozšíření stávajícího syslog démona.
 
-\begin{figure}[ht]
+\begin{figure}[H]
 	\centering
 	\includegraphics[scale=0.5]{images/diagram-nasazeni-noveho-reseni}
 	\caption[Diagram nasazení nového řešení]{Diagram nasazení nového řešení}
 \end{figure}
 
-Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího démona na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával bychom splnili požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto toto řešení zavrhuji.
-Je tedy nutno problém řešit na straně set-top boxu kde původní řešení je postaveno na busy-box syslogd. Nabízí se možnost upravit fungování tím způsobem, aby se logy s nízkou severitou už na set-top boxu zahazovaly a pouze v případě potřeby bylo umožněné na dálku změnit konfiguraci démona tak, aby se povolilo logování pro logy s nastavenou danou komponentou a severitou. To vše přes SHELL-ové API.
-Součástí zadání je ale i implementovat škrcení zpráv, aby nedocházelo k zahlcení linky. Takovou možnost prostý syslogd neposkytuje a je proto nutno zvážit napsání vlastního démona či nasazení jiného, vyspělejšího logovacího démona.
-
-
 \section{Srovnání logovacích démonů}
-V této kapitole zmíním a popíši vybrané logovací démony a v závěru kapitoly je porovnám.
-
+V této kapitole jsou popsány vybrané logovací démony a v jejím závěru jsou porovnány.
 \subsection{BusyBox Syslogd}
 Tato logovací utilita se skládá ze dvou démonů, jmenovitě z Klogd, který zachytává logy z kernelu a předává je ke zpracování Syslogdémonu. Syslogd pak zachytává i všechny zbylé logy a dále s nimi nakládá. Má však velice omezenou funkcionalitu. Dokáže pouze logy lokálně ukládat, přeposílat je dále po síti, zahazovat duplikáty, rotovat logy v závislosti na velikosti a filtrovat zprávy podle omezených kritérií. Dokáže totiž filtrovat pouze podle typu facility a už nikoliv podle názvu komponenty, která log vygenerovala.
 
@@ -319,25 +322,21 @@ Je nutno ale zmínit, že pokročilé funkce jako například šifrování zprá
 
 \subsection{Rsyslog}
 Výčet funkcionalit Rsyslogu je ještě obsáhlejší než u Syslog-ng~\cite{Rsyslog-features}. Technické požadavky se s jeho použitím tedy také dají splnit všechny, kromě vzdálené změny konfigurace. Oproti Syslog-ng je Rsyslog kompletně zdarma a open-source. Navíc není jen logovacím démonem, ale i analyzérem logů. Dokáže logy podle obsahu zprávy měnit, třídit a jinak s nimy nakládat.
-Že je Rsyslog vyspělý a kvalitní program dokazuje fakt, že je defaultním logovacím démonem na spoustě linuxových distribucích, jmenovitě například v Ubuntu.
+Že je Rsyslog vyspělý a kvalitní program dokazuje fakt, že je výchozím logovacím démonem na spoustě linuxových distribucích, jmenovitě například v Ubuntu.
 Jeho slabiny shledávám v nedostatečné dokumentaci a ve specifických případech v neefektivním analyzování logů mající za následek (obvzláště na embedded zařízení s pomalým ARM procesorem) rychlostní deficit. Jeho vývoj obstarává z velké většiny pouze jeden člověk, jeho původní tvůrce Rainer Gerhards. A v jednom člověku není snadné dovést tak rozsáhlý projekt k dokonalosti.
 
 \subsection{Porovnání logovacích utilit}
 Pouhým nasazením jakéhokoli známého logovacího démonu není možné splnit všechny vytyčené technické požadavky. V případě ponechání původního BusyBox syslogd démonu by pro splnění technických požadavků bylo nutno doimplementovat tolik funkcionalit, že by to výrazně přesahovalo rozsah bakalářské práce.
-Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či Rsyslog. Oba totiž poskytují námi požadované funkcionality. Syslog-ng však většinu z nich poskytuje pouze v placené closed-source verzi a proto jsem se rozhodl pro Rsyslog.
+Výhodněji se jeví nasadit pokročilý logovací démon jako je Syslog-ng či Rsyslog. Oba totiž poskytují většinu námi požadovaných funkcionalit. Syslog-ng však některé z nich poskytuje pouze v placené closed-source verzi~\cite{syslogNgPremium}.
+Oproti tomu výhodou Rsyslogu je podpora tzv. modulárního systému, který představuje možnost napsání vlastních modulů (programů) komunikujících skrze API s Rsyslogem, které mohou zásadně rozšiřovat jeho funkcionalitu. Moduly představují hlavní argument, proč byl nakonec vybrán jako nový logovací démon Rsyslog.
 
-\section{Šifrování zpráv}
-
-
-
-\section{Komprese zpráv}
-TODO
-
-
-\chapter{Realizace}
+\chapter{Návrh a realizace}
+V úvodu kapitoly je předveden buildovací systém a způsob instalace aplikací pro STB.
+Následuje obsáhlý popis Rsyslogu a jeho funkcionalit včetně ukázek jeho konfigurace.
+Dále je popsán vývoj modulů pro Rsyslog a jsou představeny dva vlastní naprogramované.
+Kapitolu zakončuje návrh API pro vzdálenou konfiguraci Rsyslogu a popis jeho implementace.
 
 \section{Sestavení a instalace Rsyslogu na STB}
- 
 Rsyslog není součástí SDK a tak jej bylo nutné a všechny knihovny na kterých závisí (zlib, libestr, libee, liblogging a libfastjson) zkompilovat a posléze nainstalovat na STB. K tomu bude použit systém Gu.
 
 \subsection{Buildovací systém Gu}
@@ -400,7 +399,7 @@ kern.info;kern.!err          /var/adm/kernel-info
 \end{lstlisting}
 
 Díky této podpoře je možno velice snadno migrovat z Syslogd na Rsyslogd.
-Pro využití i jiných než základních funkcí Rsyslogu, je nutno k nakonfigurování pravidel použít syntaxi jazyku Rainerscript.
+Pro využití i jiných než základních funkcí Rsyslogu je nutno k nakonfigurování pravidel použít syntaxi jazyku Rainerscript.
 
 \subsection{Rainerscript}
 Rainerscript~\cite{RainerScript} je skriptovací jazyk navržený ke správě síťových událostí (převážně nakládání se syslog zprávami) a dále ke konfiguraci softwaru, pro který je používán.
@@ -410,12 +409,12 @@ Jedná se o netypový jazyk, který poskytuje podporu regulárních výrazů~\ci
 Podrobnosti jsou k nalezení v dokumentu s formální definicí jazyka~\cite{RainerScriptFormalDefinition}.
 
 \subsection{rsyslog.conf}
-Níže je uvedena ukázka RainerScript konfiguračního souboru, kde jsou předvedeny základní konstrukce používané při jeho tvorbě.
+Níže je uvedena ukázka RainerScript konfiguračního souboru, kde jsou předvedeny základní konstrukce používané při jeho tvorbě. Tato ukázka by měla primárně sloužit zadvateli pro porozumění konfiguračního souboru a jako možný návod na budoucí úpravy.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 module(load="NazevModulu")
 \end{lstlisting}
-Na začátku souboru je možné načíst různé moduly, poskytující doplňující funkcionality. Příkladem může být modul imklog čtoucí zprávy z kernelu nebo omfwd umoňující posílat zprávy zkrze UDP nebo TCP protokoly. Je nutno poznamenat, že některé moduly nejsou defaultně kompilovány spolu s rsyslogem a je proto nutno přidat příkazu compile parametr $-$$-$enable$-$<název\_modulu>.
+Na začátku souboru je možné načíst různé moduly poskytující doplňující funkcionality. Příkladem může být modul imklog čtoucí zprávy z kernelu nebo omfwd umoňující posílat zprávy zkrze UDP nebo TCP protokoly. Je nutno poznamenat, že některé moduly nejsou ve výchozím nastavení kompilovány spolu s Rsyslogem a je proto nutno přidat příkazu compile parametr $-$$-$enable$-$<název\_modulu>.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 set $!Promenna="hodnota";
@@ -433,7 +432,7 @@ template(name="nazev-sablony" type="string" string="<%pri%>%TIMESTAMP:::date-rfc
 action(template="nazev-sablony" type="omfwd" Target="192.168.1.10" Port="5514" Protocol="udp" )
 \end{lstlisting}
 
-Pomocí akcí se volají jednotlivé moduly. Ty mohou mít různé parametry, které upravují jeho chování. V ukázce výše se volá modul omfwd sloužící k posílání zpráv skrze síť. Parametry specifikují konkrétní IP a port sítě, typ protokolu a název šablony, která upravuje formát zpráv.
+Pomocí akcí se volají jednotlivé moduly. Ty mohou mít různé parametry, které upravují jejich chování. V ukázce výše se volá modul omfwd sloužící k posílání zpráv skrze síť. Parametry specifikují konkrétní IP a port sítě, typ protokolu a název šablony, která upravuje formát zpráv.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 if $programname == 'solid' and $syslogseverity > 5
@@ -458,44 +457,47 @@ Nyní po obeznámení se základní syntaxí Rainerscriptu je možno popsat fung
 	\caption[Rsyslog queues]{Rsyslog queues~\cite{RsyslogQueues}}
 \end{figure}
 
-Princip fungování front v Rsyslogu je znázorněn na obrázku níže. Zprávy (ať už lokální nebo ze vzdáleného zdroje putující do Rsyslogu např. skrze UDP) vstupují do Rsyslogu  na obrázku zleva, kde jsou předzpracovány a putují do Main Queue. V dalším kroku jsou zprávy tříděny podle pravidel specifikovaných v rsyslog.conf a putují do jednotlivých action queues. Následně proběhne finální zpracování zpráv a opouštějí rsyslog skrze výstupní modul ať už zápisem do lokálního souboru nebo např. předáním jinému procesu.
+Princip fungování front v Rsyslogu je znázorněn na obrázku níže. Zprávy (ať už lokální nebo ze vzdáleného zdroje putující do Rsyslogu např. skrze UDP) vstupují do Rsyslogu  na obrázku zleva, kde jsou předzpracovány a putují do Main Queue. V dalším kroku jsou zprávy tříděny podle pravidel specifikovaných v rsyslog.conf a putují do jednotlivých action queues. Následně proběhne finální zpracování zpráv a opouštějí Rsyslog skrze výstupní modul ať už zápisem do lokálního souboru nebo např. předáním jinému procesu.
 
 Všechny zprávy tedy projdou nejprve skrze Main Queue a poté skrze libovolný počet Action Queues. Je nutno zmínit, že každá akce obsahuje vlastní frontu, ve které zprávy čekají na zpracování. V případě, že v akci žádnou frontu nepotřebujeme, stačí nastavit jako Action Queue mód Direct mode.
 
 Existují totiž čtyři módy front. Speciálním (a výchozím) je Direct mode. Direct Queues ve skutečnosti nejsou frontami. Neobsahují totiž žádný buffer a zprávy rovnou přeposílají dál. Vhodné jsou například při zápisu logů do souboru na lokální úložiště.
 
-Druhým typem jsou In-Memory Queues, které udržují zprávy v na operční paměti uloženém bufferu. Výhodou je vysoká rychlost a nevýhodou zase hrozba ztráty dat v případě neočekávaného pádu systému.
-Existují dva podtypy In-Memory front. Můžou být implementovány formou spojového seznamu (LinkedList queue) nebo za použití pole ukazatelů na prvky fronty (FixedArray) s předem pevně určeným počtem prvků. FixedArray mode je nejrychlejší ze všech módů a je vhodný pro případy, kdy očekáváme pouze malý počet prvků ve frontě. LinkedList queue dynamicky alokuje místo v paměti pro každou zprávu.
-Obecně se doporučuje použití implementace postavené na spojovém seznamu, jelikož výkonostní propad oproti fixnímu poly je zanedbatelný, zato úspora paměťového místa může být značná.
- 
-Třetí typ front představují Disk Queues, které jak z názvu vyplývá bufferují na disk. Využití najdou v případech kdy si žádáme vysokou soplehlivost. Jejich nevýhodou je pomalost limitovaná rychlostí perzistentních úložišť.
+Druhým typem jsou In-Memory Queues, které udržují zprávy v bufferu v operační paměti. Výhodou je vysoká rychlost a nevýhodou zase hrozba ztráty dat v případě neočekávaného pádu systému a zřejmé nároky na paměť.
+Existují dva podtypy In-Memory front. Můžou být implementovány formou spojového seznamu (LinkedList queue) nebo za použití pole ukazatelů na prvky fronty (FixedArray) s předem pevně určeným počtem prvků. FixedArray mode je nejrychlejší ze všech módů a je vhodný pro případy, kdy očekáváme pouze malý počet prvků ve frontě. Naproti tomu LinkedList queue dynamicky alokuje místo v paměti pro každou zprávu a je výhodný například na serverech, kde se očekává velký tok zpráv.
+
+Třetí typ front představují Disk Queues, které jak z názvu vyplývá používají disk jako vyrovnávací paměť. Využití najdou v případech kdy si žádáme vysokou soplehlivost. Jejich nevýhodou je pomalost limitovaná rychlostí perzistentních úložišť.
 
 Disk-Assisted Memory Queues fungují stejně jako In-Memory Queues a navíc v případě potřeby (kterou může být nedostatek místa nebo nutnost uložení zpráv z bufferu z nutnosti zálohy zpráv z perzistentní paměti před vypnutím systému) dokáží obsah fronty nebo její část přesunout na disk. Používají chytrý algoritmus, který při malém vytížení vůbec nepoužívá disk queues. V případě vyčerpání kapacity In-Memory fronty se algoritmus postará o přesun části zpráv do diskové fronty.
 
 \subsubsection*{Rate-limiting za použití Rsyslog queues}
 Původní řešení trápil neduh, kdy k vyprázdnění bufferu docházelo až s nově příchozí zprávou, což mělo za následek, že v případě zaplněného bufferu a následující delší odmlky nově příchozích zpráv mohlo dojit k velkému zpoždení odeslání zpráv v ten moment uložených v bufferu. Tento problém se nasazením Rsyslogu a použitím jeho sofistikovaných front vyřeší.
 V této kapitole je popsána implementace fronty, která má za cíl škrtit tok odchozích zpráv podle stejných kritéri, jak tomu bylo původně.
-Původní řešení bylo postavené na syslogd démonu doplněné o hardcodovaný rate-limiting zpráv a fungovalo následovně. Všechny příchozí zprávy putovaly do fronty o fixní velikosti 128 kB. V případě, kdy tok odchozích zpráv překročil 150 kbit/s nebo počet zpráv ve frontě přesáhl 800 byly nově příchozí zprávy zahozeny.
+Původní řešení bylo postavené na Busy box Syslogd démonu doplněné o vlastní implementaci rate-limitingu zpráv a fungovalo následovně. Všechny příchozí zprávy putovaly do fronty o fixní velikosti 128 kB. V případě, kdy tok odchozích zpráv překročil 150 kbit/s nebo počet zpráv ve frontě přesáhl 800 byly nově příchozí zprávy zahozeny.
 Rsyslog neumožňuje nastavení maximálního toku sítě, avšak poskytuje možnost nastavit pro frontu tyto parametry:
 \begin{description}
   \setlength\itemsep{-1ex}
   \item [queue.size:] Maximální počet zpráv ve frontě.
-  \item [queue.dequeuebatchsize:] Maximální počet zpráv vystupujících z fronty v jeden okamžik.
-  \item [queue.dequeueslowdown:] Zpoždění (v $\mu$s) mezi odesíláním jednotlivých zpráv (v případě queue.dequeuebatchsize>1 bloků zpráv).
+  \item [queue.dequeuebatchsize:] Maximální počet zpráv vystupujících z fronty v jedné dávce.
+  \item [queue.dequeueslowdown:] Zpoždění (v $\mu$s) mezi odesíláním dávek zpráv.
 \end{description}
-Queue.size tedy nastavíme stejně na 800 zpráv.
-Pro dequeuebatchsize jsem zvolil hodnotu 5 - TODO, proč vlastně zrovna 5..
-Nyní je třeba zjistit parametry pro dequeueslowdown. Z měření bylo zjištěno, že průměrná velikost UDP paketu se zprávou ze STB má 150~B. Pomocí níže zobrazených vzroců jsme snadno spočetli požadované zpoždění v mikrosekundách, aby zátěž linky nepřekročila 150 kbit/s.
+
+Queue.size je nově nastaven stejně na 800 zpráv.
+
+Dequeuebatchsize byla přiřazena hodnota 10. Z měření totiž bylo zjištěno, že průměrná velikost UDP paketu se zprávou ze STB má do 150~Bytů. MTU UDP paketu je 1500~B. Deset zpráv se tedy akorát vejde do jednoho UDP paketu.
+Dále je hodnota okolo deseti výhodná z důvodu, že příliš malé Dequeuebatchsize vytěžuje CPU kvůli nutnosti častého vyprazdňování fronty. Naopak vysoké hodnoty  Dequeuebatchsize  (v řádu stovek) způsobují nežádoucí, nárazové a velké objemy zpráv na lince. Deset proto považuji za kompromis.
+  
+Nyní je třeba zjistit parametry pro Dequeueslowdown. Pomocí níže zobrazených vzroců bylo spočítáno požadované zpoždění v mikrosekundách, aby zátěž linky nepřekročila 150 kbit/s.
+
 \begin{description}
-  \item $počet~zpráv=\frac{bandwith}{velikost~paketu}=\frac{150~*~1~000~[b]}{8~*~150~[b]}=125$
-  \item $zpoždění=\frac{1~sekunda}{počet~zpráv}=\frac{1~000~000}{125}*dq.~slowdown~=~8~000~*~5~=~40~000~[\mu$$s]$
+	\item $\#~zpráv=\frac{šířka~pásma}{velikost~paketu}=\frac{150~*~1~000~[b]}{8~*~150~[b]}=125$
+	\item $slowdown=\frac{1~sekunda}{\#~zpráv}=\frac{1~000~000}{125}*batchsize~=~8~000~*~10~=~80~000~[\mu$$s]$
 \end{description}
-Ještě zbývá zvolit typ fronty, kde kvůli důrazu na rychlost byla zvolena implementace založená na spojovém seznamu.
+Ještě zbývá zvolit typ fronty, kde kvůli důrazu na rychlost byla zvolena implementace používající fixní pole.
 Výsledný kód pro akci s In-memory frontou s nastaveným rate-limitingem vypadá následovně:
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
-action(type="omfwd" target="192.168.1.10" port="5514" queue.size="800" queue.dequeueslowdown="40000" queue.dequeuebatchsize="5" queue.type="LinkedList" )
+action(type="omfwd" target="192.168.1.10" port="5514" queue.size="800" queue.dequeueslowdown="80000" queue.dequeuebatchsize="10" queue.type="FixedArray" )
 \end{lstlisting}
-
 
 \subsection{Razítkování zpráv}
 Požadavkem zadavatele bylo značit všechny zprávy vzestupnou řadou čísel kvůli rozpoznání případného výpadku některých zpráv.
@@ -511,7 +513,7 @@ Proměnné \uv{\$!counter} je tak přiřazeno číslo \uv{1} a s každou další
 Tato proměnná je následně používána v šablonách a je tak připojena k tělu každé zprávy.
 
 \subsection{Formát logů}
-Požadavkem zadavatele je, aby zprávy měli identický formát, jako tomu bylo u původního řešení. Důvodem je, že logy ze STB sbíra vzdálený server, který očekává daný formát.
+Požadavkem zadavatele je, aby zprávy měly identický formát, jako tomu bylo u původního řešení. Důvodem je, že logy ze STB sbíra vzdálený server, který očekává daný formát.
 \\
 \\
 Vzor zprávy:
@@ -523,37 +525,20 @@ Formát:
 <PRI><RFC3164 date> <STB mac address> <component>: <id=NUM>  <message>
 \end{lstlisting}
 
-Můžeme si povšimnout, že vzorová zpráva začíná datumem a přitom formát zprávy obsahuje na prvním místě číslo PRI a až poté následuje datum. Hodnota PRI totiž není viditelná a slouží logovacímu démonu, který z ní dokáže vypočítat severity a facility zprávy.
+Je možno si povšimnout, že vzorová zpráva začíná datumem a přitom formát zprávy obsahuje na prvním místě číslo PRI a až poté následuje datum. Hodnota PRI totiž není viditelná a slouží logovacímu démonu, který z ní dokáže vypočítat severity a facility zprávy.
 
-\subsubsection{Šablony}
-Šablony specifikují výslednou podobu zpráv a jejich použití je intuitivní, proto rovnou předvedu hotovou implementaci, která splňuje požavky pro formát.
-
-\subsubsection*{Implementace šablony}
-Základní šablona pro zprávy lokálně ukládané na STB:
-\begin{lstlisting}[style=RainerScriptSimpleStyle]
-template( name="local-template" type="string" string="%TIMESTAMP:::date-rfc3164% %\$!macaddr% %syslogtag% id=%\$!counter%%msg%\n" )
-\end{lstlisting}
-
-\begin{description}
-  \setlength\itemsep{-1ex}
-  \item [name:] Název šablony, který sloužící jako identifikátor pro jednotlivé akce.
-  \item [type:] Definuje typ šablony, které umožňují různé způsoby jak specifikovat obsah šablony. V této ukázce je zvolen styl string.
-  \item [string:] Tento parametr je možno definovat jen v případě zvolení typu šablony \uv{string}. Jeho obsahem pak jsou konstatní textové řetězce a proměné, které jsou vměstnány mezi dvojice znaků procento.
-\end{description}
-
-\section{Rsyslog moduly}
+\section{Moduly pro Rsyslog}
 Rsyslog poskytuje podporu tzv. modulů, které mohou zásadně rozšiřovat jeho funkcionalitu. Tyto moduly jsou obvykle napsány v jednom C souboru. Pro jejich zprovoznění je třeba náležitě upravit Makefile a zkompilovat Rsyslog se zapnutou jejich podprou.
 
 Moduly se dělí na 6 základních kategorií, zde zmíním 3 nejpoužívanější:
 
 \begin{description}
   \item [Output Modules:] Výstupní moduly umožňují posílat zprávy na různé cíle. Je tak možno implementovat například modul, který dokáže odesílat zprávy do nějaké exotické databáze, kterou Rsyslog v základu nezná. Jako příklad výstupního modulu zmíním ommail, což je modul sloužící k posílání zpráv skrze mail.
-  \item [Input Modules:] Vstupní moduly jak název napovídá umožňují přijímat zprávy z různých zdrojů. Hojně používaný je imklog sbírající zprávy z linuxového jádra nebo imudp přijímající zprávy skrze UDP protokol.
+  \item [Input Modules:] Vstupní moduly, jak název napovídá, umožňují přijímat zprávy z různých zdrojů. Hojně používaný je imklog sbírající zprávy z linuxového jádra nebo imudp přijímající zprávy skrze UDP protokol.
   \item [Message Modification Modules:] Moduly, které modifikují obsah zprávy. Jako příklad uvedu v této práci použitý modul mmsequence, který generuje podle zadaných kritérií číselné řady.
 \end{description}
 
-
-V této práci byly naprogramovány dva moduly, oba z kategorie Message Modification Modules.
+V této práci byly naprogramovány dva moduly, oba z kategorie Message Modification Modules. V následujícím textu je popsána jejich funkčnost a způsob použití. Implementaci zde v práci neuvádím, protože se většina kódu skládá z volání Rsyslog API a kód každého z nich obsahuje stovky řádků.
 
 \subsection{Modul mmdelstr}
 Tento modul slouží ke smazání zadaného podřetězce z těla zprávy.
@@ -565,7 +550,7 @@ module(load="mmdelstr")
 action(type="mmdelstr" stringtobedeleted="Some string")
 \end{lstlisting}
 
-Modul má pouze jeden parametr \uv{stringtobedeleted}, kterým se specifikuje podřetězec, který má být smazán. V případě neexistence takového podřetězce, zůstává zpráva netknutá. V případě výskytu vícero takových podřetězců, je smazán pouze první.
+Modul má pouze jeden parametr \uv{stringtobedeleted}, kterým se specifikuje podřetězec, který má být smazán. V případě neexistence takového podřetězce zůstává zpráva netknutá. V případě výskytu vícero takových podřetězců je smazán pouze první.
 
 \subsection{Modul mmsevrewrite}
 Mmsevrewrite dokáže měnit severitu zadané zprávy. Rsyslog v základu tuto funkcionalitu neumožňuje, protože se jedná o vzácný požadavek. Modul je použit v této práci pro konverzi zpráv pocházejících z aplikace používající s Rsyslogem jinak nekompatibilní množinu severit.
@@ -597,7 +582,8 @@ $msg contains "Player_GetState" then
 Pokud zpráva pochází z komponenty \uv{solid} a obsahuje zmíněný podřetězec, klíčové slovo stop okamžitě zahodí v ten moment zpracovávanou zprávu.
 \\
 \subsubsection{Převod severit}
-Aplikace na STB používají pro logování jinou množinu severit, než s jakými pracuje Rsyslog. Zadavatel proto požaduje změnit severity zpráv podle následující tabulky.
+Některé aplikace běžící na STB používají jinou množinu severit, než s jakými pracuje Rsyslog a navíc nejsou v hlavičce zprávy, nýbrž v jejím těle.
+Zadavatel proto požaduje změnit severity zpráv podle následující tabulky.
 
 \begin{table}[H]
 \centering
@@ -610,7 +596,6 @@ Aplikace na STB používají pro logování jinou množinu severit, než s jaký
 		TRACE		& DEBUG			\tabularnewline \hline
 	\end{tabular}
 \end{table}
-
 Implementace pravidla:
 \begin{lstlisting}[style=RainerScriptStyle]
 if $msg contains "mTRACE: " then
@@ -641,7 +626,7 @@ if $programname == 'solid' and $msg contains
 
 \section{Vzdálená konfigurace}
 Požadavkem zadavatele je umožnit změnu nastavení maximální povolené severity jednotlivých komponent. Rsyslog neumožňuje změnu konfiguračního souboru za jeho běhu a proto je nutno implementovat API, které umožní přenastavení konfiguračního souboru a jeho znovunačtení (restartováním Rsyslogu).
-Změny tímto skriptem způsobebé musí být zachovány i po restartu STB.
+Změny tímto skriptem způsobené musí být zachovány i po restartu STB.
 
 \subsection{Návrh API}
 Skript musí umět nastavi konfiguraci souboru rsyslog.conf tak, aby v případě rozpoznání zprávy od určité komponenty spolu s nastavenou severitou vyšší, než je povolená, danou zprávu zahodil. 
@@ -649,16 +634,16 @@ Musí tedy umět v daném skriptu nalézt část kódu, kde se zpracovává zada
 
 V úvahu připadaly 2 různé přístupy. Je možné při každém zavolání scriptu generovat celý nový konfigurační soubor a nebo parsovat stávající soubor a jeho část pomocí skriptu měnit.
 Výhodou prvního způsobu je, že nehrozí nechtěné přepsání jiných čásí skriptu, než bylo zamýšleno. Nevýhodou je složitější implementace z důvodu nutnosti pří generování nového skriptu zohledňovat předchozí nastavení skritpu. Tedy by bylo nutno z původního skriptu extrahovat nastavení jednotlivých komponent a to zkombinovat s novým nastavením.
-Rozhodl jsem se proto pro 2. způsob řešení s tím, že zadavatel bude poučen o nutnosti dodržovat určité zásady při měnění konfiguračního souboru, aby nemohlo dojít k neočekávanému chování.
+A proto byl zvolen 2. způsob řešení s tím, že zadavatel bude poučen o nutnosti dodržovat určité zásady při měnění konfiguračního souboru, aby nemohlo dojít k neočekávanému chování.
 
 \subsection{Výběr implementačních nástrojů}
-Jazyky jako Perl nebo Python se jeví jako ideální pro napsánání skriptu na zpracování textu. Tyto ani jiné podobné jazyky ovšem nejsou součástí SDK a zadavatel si nepřeje jejich instalaci z důvodu omezené paměti nevalného výkonu embedded zařízení. Nezbýva než se spokojit s na STB přítomnou minimalisticou BusyBox implementací SHELLu nesoucí název ASH. Ta sice neposkytuje tak elegantní syntaxi a neposkytuje tolik rozšířených funkcionalit jako moderní SHELL-ové jazyky typu BASH, ale i přesto se s její pomocí a základních UNIXových programů jako například GREP je možno API naprogramovat.
+Jazyky jako Perl nebo Python se jeví jako ideální pro napsánání skriptu na zpracování textu. Tyto ani jiné podobné jazyky ovšem nejsou součástí SDK a zadavatel si nepřeje jejich instalaci z důvodu omezené paměti a nevalného výkonu embedded zařízení. Nezbýva, než se spokojit s na STB přítomnou minimalisticou BusyBox implementací SHELLu nesoucí název ASH. Ta sice neposkytuje tak elegantní syntaxi a neposkytuje tolik rozšířených funkcionalit jako moderní SHELL-ové jazyky typu BASH, ale i přesto se s její pomocí a základních UNIXových programů jako například GREP je možno API naprogramovat.
 
 \subsection{Rozhraní skriptu}
 První možností je napsat API ve formě scriptu, který přijímá jednotlivé názvy komponent a jim příslušící maximální povolenou severitu jako parametry.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
-set_log_verbosity.sh [component] [severity] ...
+set_log_verbosity.sh [component1 severity1] ...
 \end{lstlisting}
 
 Jako druhá možnost připadá v úvahu skript, který čte seznam jednotlivých komponent a maximálních povolených severit ze souboru, který má následující formát:
@@ -670,29 +655,28 @@ componentXY = INFO
 DEFAULT     = INFO
 \end{lstlisting}
 
-Se zadavatelem jsme se shodli, že se lépe jeví první způsob pro jeho jednoduší a rycheljší obsluhu a navíc s jeho použitím pro zadavatele odpadá starost o další konfigurační soubor.
+V implementaci byl nakonec použit první způsob pro jeho jednoduší obsluhu a navíc s jeho použitím pro zadavatele odpadá starost o další konfigurační soubor.
 
 \subsection{Implementace API}
 Skript na vstupu očekává sudý počet parametrů, kde každý sudý parametr je název komponenty a liché parametry slouží pro definování severit pomocí jejich číselných hodnot.
 Skript vyhledá v konfiguračním souboru rsyslog.conf řádek s danou komponentou a přenastaví maximální povolenou severitu. Skript kontrolojue správnost vstupních parametrů pro zabránení neočekávaného chování programu.
 
 \chapter{Testování}
-TODO úvod do testování. Co, jak, proč..
+V této kapitole jsou předvedeny tři typy testů.
+Nejprve se sleduje využití linky sítě při simulaci běžného provozu STB. Druhý test ověřuje funkčnost rate-limitingu zpráv. A v posledním testu se zkoumá vytížení prostředků STB za běžných i extrémních podmínek.
 
-Pro účely testování byl použit Apple Macbook 13 (dále jen PC) s následující konfigurací.
-\subsection*{kofigurace PC}
-\begin{description}
-\setlength\itemsep{-1ex}
-  \item [CPU:] 2,7 GHz Intel Core i5
-  \item [RAM:] 8GB DDR3
-  \item [OS:] OS X 10.11.4
-\end{description}
+Vždy je porovnáváno nové řešení postavené na Rsyslogu oproti původnímu a následuje diskuze.
+
+\section*{Testovací prostředí a nástroje}
+
+\subsection*{WireShark}
+Tento nástroj slouží jako analyzér síťového provozu. Dokáže v reálném čase zachytávat informace o paketech putujících po síti a ty následně vyzobrazit v grafu, čehož je v oddílech 5.1 a 5.2 využito.
 
 \subsection*{Testovací syslog server}
-Pro účely testování byla na Wifi routeru Huawei HG622u nakonfigurována lokální síť (jakožto simulace reálných serverů zadavatele). Na výše zmíněném PC, byl nakonfigurován logovací démon syslog-ng pro sběr logů od STB pomocí definování naslouchání na daném UDP portu. PC je tedy v testech použito jakožto syslog server.
+Pro účely testování byla nakonfigurována lokální síť jakožto simulace reálných serverů zadavatele. Jako syslog server byl použit notebook Apple Macbook Pro, na kterém byl nakonfigurován logovací démon Syslog-ng pro sběr logů z STB.
 
-\subsection{Test zahlcení zprávami za běžného provozu}
- V tomto testu srovnávám vytížení linky nového a starého logovacího řešení při běžném provozu STB. 
+\section{Test využití linky zprávami za běžného provozu}
+ V tomto testu je srovnáváno vytížení linky za použití nového a starého logovacího řešení při běžném provozu STB. 
 
 \begin{figure}[H]
 	\centering
@@ -713,62 +697,172 @@ Pro účely testování byla na Wifi routeru Huawei HG622u nakonfigurována lok�
 \end{figure}
 
 \subsection*{Zhodnocení}
-Jak je vidět z prvních dvou grafů, nové řešení postavené na rsyslogd přijíma méně logů. Je to způsobeno jeho konfigurací, v níž je nastaveno pravidlo (viz kapitola 4.3.3.1), kterým se zahazují určité nepotřebné zprávy. Na STB totiž běží aplikace, již zadavatel nemá možnost upravit, která loguje mimo jiné i nepotřebné zprávy. V původním řešením podobné pravidlo nebylo možné jakkoliv nastavit.
+Jak je vidět z prvních dvou grafů (obr. 5.1 a 5.2), nové řešení postavené na Rsyslogd přijíma méně logů. Je to způsobeno jeho konfigurací, v níž je nastaveno pravidlo (viz kapitola 4.3.3.1), kterým se zahazují určité nepotřebné zprávy. Na STB totiž běží aplikace, již zadavatel nemá možnost upravit, která loguje mimo jiné i nepotřebné zprávy. V původním řešením podobné pravidlo nebylo možné jakkoliv nastavit.
 Dle Wiresharku tak nové řešení v průměru přijíma 8,6 paketů za sekundu oproti 9 paketům za sekundu v původním řešení.
 
-V třetím grafu je pro zajímavost znázorněno zahlcení linky při použití nového řešení po zakázání zpráv od komponenty solid.
-Chci tím demonstrovat, že zadavatel má v novém řešení možnost si upravit filtrování zpráv podle různých kritérií a může tak razantně snížit zahlcení sítě.
+V třetím grafu (obr. 5.3) je pro zajímavost znázorněno využití linky při použití nového řešení po zakázání zpráv od komponenty solid.
+Chci tím demonstrovat, že zadavatel má v novém řešení možnost si upravit filtrování zpráv podle různých kritérií a může tak razantně snížit tok zpráv na síti.
 
-\section{Test škrcení zpráv}
-V tomto testu se ověřuje funkčnost rate-limitingu.
-K tomu je použit skript generující obrovské množství logů v krátkém časovém intervalu. Funkce gen\_messages() pomocí příkazu logger posíla 1000 zpráv syslog démonu. Tato funkce je navíc volána v deseti paralelních instancích.
+\section{Test rate-limitingu zpráv}
+Jak bylo zjištěno v minulém testu, zprávy generované set-top boxem tvoří tok o přibližně deseti tisících bitech za sekundu. Limit toku je nastaven na 15-ti násobek této hodnoty a tak by se v reálných podmínkách neměl nikdy aktivovat. Nicméně zadavatel rate-limiting požaduje jako pojistku pro případ, kdy by například vlivem chyby některá z komponent začala generovat nepřiměřené množství zpráv a nedošlo tak k zahlacení ať už sítě na straně uživatele STB nebo serverů zadavatele.
+
+Pro ověření funkčnosti rate-limitingu byl proto sestrojen následující skript.
+
+\subsection{Skript pro otestování rate-limitingu}
+Účelem skriptu je generovat takové množství zpráv, aby na síti vznikl tok přesahující 150 000 b za sekundu a tedy aby logovací démon byl nucen zprávy bufferovat.
+
+Skript je řešen tím způsobem, že je v deseti paralelních instancích zavolán for-cyklus, každý generující po tisíci zprávách.
+Zprávy mají konstantní velikost 60 B, což odpovídá délce průměrné zprávy generované set-top boxem.
 
 \begin{lstlisting}[style=AshStyle]
-#!/bin/sh
 gen_messages() {
 	for i in $(seq 1000); do
-		logger 	"Zprava o 100B..."
+		logger 	"Lorem ipsum dolor sit amet, consectetuer adipiscing elit."
 	done
 }
+
 for i in $(seq 10); do
 	gen_messages &
 done
 \end{lstlisting}
 
-\subsection*{}
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.44]{images/test-1h-rsys-solidoff}
-	\caption[Vytížení bez zapnutého škrcení zpráv]{Vytížení bez zapnutého škrcení zpráv}
+	\includegraphics[scale=0.36]{images/test-rateLim-rsyslog-Buff-off}
+	\caption[Tok zpráv generovaný skriptem]{Skutečný tok zpráv generovaný skriptem}
 \end{figure}
-
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.44]{images/test-1h-rsys-solidoff}
-	\caption[Vytížení na původním syslogd]{Vytížení na původním syslogd}
+	\includegraphics[scale=0.36]{images/test-rateLim-syslogd}
+	\caption[Rate-limiting - Syslogd]{Rate-limiting - Syslogd}
 \end{figure}
-
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.44]{images/test-1h-rsys-solidoff}
-	\caption[Vytížení na rsyslogu s aktivovaným škrcením zpráv]{Vytížení na rsyslogu s aktivovaným škrcením zpráv}
+	\includegraphics[scale=0.36]{images/test-rateLim-rsyslog}
+	\caption[Rate-limiting - Rsyslog]{Rate-limiting - Rsyslog}
 \end{figure}
 
+\subsection{Zhodnocení}
+První graf (obr. 5.4) znázorňuje kolik bitů textu za sekundu daný skript ve skutečnosti generuje.
+Zbylé dva grafy (obr 5.5 a 5.6) už pouze demonstrují správnou funkčnost rate-limitingu. Tedy, že tok bitů za sekundu nepřekročí hranici 150 000.
 
-\subsection*{Zhodnocení}
-První graf znázorňuje, kolik bitů textu za sekundu daný skript ve skutečnosti generuje.
-Zbylé dva grafy už pouze demonstrují, že škrcení funguje správně. Tedy, že tok bitů za sekundu nepřekročí hranici 150 000.
+\section{Test vytížení systému}
+Protože embedded zařízení neoplývají vysokým výkonem a ani v této práci použitý STB není vyjímkou, je nutno logovací řešení podrobit testům a zjistit jeho chování pod extrémím zatížením, zda nehrozí jeho přetížení a z toho vyplývající nestabilita. Dále je otestováno i vytížení systému za běžných podmínek, kde je porovnáno s původním řešením. Ve všech testech se zkoumá vytížení CPU a paměťová náročnost.
 
-Skript simuluje chování běžných aplikací STB tím, že zprávy které generuje, mají délku odpovídající průměrné délce zpráv generovaných STB.
-TODO -- grafy pouze ilustrační, protože realita je jiná. - TODO
+Před samotným testováním je ale nutno čtenáře seznámit se základními pojmy týkajícími se měření výkonosti CPU na Linuxových systémech~\cite{MeasuringPerformance}.
 
-\subsection{Vytížení systému}
+\subsection{Terminologie}
 
-\section{Zátěžový test v běžných podmínkách}
-TODO test využití CPU, old vs new.
+\begin{description}
+\setlength\itemsep{-1ex}
+	\item [Clock tick:] Clock tick je jednotka pro měření CPU času. Představuje převrácenou hodnotu makra CLK\_TCK. Nemá tedy žádnou souvislost s frekvencí procesoru, jak by se podle názvu mohlo zdát.
+	\item [CLK\_TCK:] Makro (může mít i jiný název jako např. CLOCKS\_PER\_SEC) definuje počet clock ticks za sekundu. Na našem STB má hodnotu 100.
+	\item [CPU čas:] Představuje počet clock ticků a měří se jím doba běhu programů.
+	\item [User time:] CPU čas strávený vykonáváním procesu v tzv. user režimu. V tomto řežimu proces nemá oprávnění přistupovat přímo k HW systému. Nemůže tedy např. přímo volat instrukce CPU a nebo přistupovat přímo k paměti, ale pouze skrze API.
+	\item [Sys time:] CPU čas strávený vykonáváním instrukcí procesu v kernel režimu, kde má proces oprávnění libovolně přistupovat přímo k HW systému.
+	\item [Real time:] Čas doby běhu procesu v sekundách. Jedná se o absolutní dobu běhu programu a je v ní tedy i zahrnuta doba, kdy byl proces blokován nebo kdy se dělil o prostředky CPU s jinými procesy.
+	\end{description}
 
+\subsection{VFS /proc}
+Na Linuxových systémech existuje virtuální souborový systém /proc~\cite{procFilesystem}, který v jednotlivých podsložkách a souborech shromažďuje informace o HW systému a procesech na něm běžících. Kromě poskytování informací lze zápisem do těchto souborů měnit nastavení jádra.
+
+Nás v této kapitole zajíma obsah souboru /proc/<pid>/stat/ (kde pid je číselný identifikátor procesu), který představuje textový řetězec obsahující informace o procesu. Pro nás důležité informace z tohoto souboru jsou zobrazeny a popsány v následující tabulce. Čísla v závorkách představují jejich pozice v řetězci.
+
+\begin{description}
+\setlength\itemsep{-1ex}
+	\item [utime:] CPU čas strávený vykonáváním procesu v user režimu. (14)
+	\item [stime:] CPU čas strávený vykonáváním procesu v kernel režimu. (15)
+	\item [cutime:] CPU čas strávený čekáním na potomky procesu v user režimu. (16)
+	\item [cstime:] CPU čas strávený čekáním na potomky procesu v kernel režimu. (17)
+	\item [starttime:] Čas vyjadřující moment startu procesu. (22)
+\end{description}
+
+\subsection{Vytížení CPU syslog démonem při velké zátěží}
+V tomto testu je měřeno procentuální vytížení CPU při extrémních podmínkách. Ty jsou simulovány skriptem z kapitoly 5.2.1, který generuje velké množství zpráv a zahlcuje tak logovacího démona. 
+
+\subsection*{Popis skriptu a výpočtu CPU vytížení}
+Skript si do proměnné start uloží CPU čas procesu, který je získán součtem hodnot utime, stime, cutime a cstime ze souboru /proc/<pid>/stat.
+
+Dále je spuštěn skript pro generování velkého množství zpráv a následně se do proměnné stop uloží nový CPU čas procesu. Odečtením hodnoty start od hodnoty stop získáme celkový počet CPU ticků daného procesu za dobu běhu skriptu genMessages.sh.
+
+Pomocí příkazu time si do pomocného souboru time\_out zaznamenáme jeho výstup.
+\begin{lstlisting}[style=AshSimpleStyle]
+#!/bin/sh
+sfile=/proc/$1/stat
+if [ ! -r $sfile ]; then echo "pid $1 not found in /proc" ; exit 1; fi
+
+start=$(cat $sfile| awk '{sum=$14+$15+$16+$17; print sum}')
+time ./genMessages.sh 2> time_out && \
+stop=$( cat $sfile| awk '{sum=$14+$15+$16+$17; print sum}')
+total_jiffies=$((stop-start))
+\end{lstlisting}
+
+Z výstupu příkazu time získáme hodnoty pro CPU čas v user a kernel režimu. Pomocí funkce get\_mili\_sec() hodnoty převedeme z desetinných čísel na čísla celá (v  milisekundách) v kterých SHELL umí počítat a celkový CPU čas procesu získáme jejich sečtením.
+\begin{lstlisting}[style=AshSimpleStyle]
+sys_time=$(cat time_out | grep sys | awk '{print $3}' | tr -d 's')
+user_time=$(cat time_out | grep user | awk '{print $3}' | tr -d 's')
+rm -rf time_out
+
+get_mili_sec()
+{
+	 l_sec=$(echo $1 | cut -d'.' -f1)
+	 l_mili_sec=$(echo $1 | cut -d'.' -f2)
+	 echo $((l_mili_sec*10+l_sec*1000))
+}
+sys_time_mili_sec=$(get_mili_sec "$sys_time")
+user_time_mili_sec=$(get_mili_sec "$user_time")
+time_mili_sec=$((sys_time_mili_sec+user_time_mili_sec))
+\end{lstlisting}
+Výsledné procentuální vytížení získáme vydělením počtu clock ticků celkovým CPU časem. 
+\begin{lstlisting}[style=AshSimpleStyle]
+cpuusage=$((total_jiffies*1000*1000/time_mili_sec))
+echo CPU USAGE: $cpuusage 
+\end{lstlisting}
+
+\subsection*{Výsledky měření}
+Vítězně z tohoto testu jednoznačeně vychází Syslogd, který si pro svůj chod vyžádá pouhé 3,12 \% CPU výkonu. Oproti tomu Rsyslog spotřebuje skoro čtyř násobek prostředků, celkem 11,9 \% CPU výkonu.
+Výsledek nijak nepřekvapuje, jelikož Syslogd filtruje zprávy pouze na základě severity a facility. Rsyslog zkoumá více parametrů zprávy (v některých případech dokonce analyzuje samotný text zpráv, což je výpočetně náročná operace) a navíc pro každou zprávu volá externí modul mmsequence.
+
+Skoro dvanácti procentní vytížení CPU výkonu Rsyslogem je však v pořádku a to z důvodu, že zbylé procesy běžící na STB vytěžují CPU minimálně (dohromady v jednotkách  procent) a tak STB i v této situaci běží naprosto nerušeně.
+
+Nutno dodat, že situace, kterou jsme tímto testem simulovaly, by v reálném nasazení neměla nikdy nastat.
+
+\subsection{Dlouhodobé vytížení CPU syslog démonem}
+V tomto testu je testováno využití CPU jednotlivými logovacími démony za běžného provozu STB.
+
+\subsection*{Popis skriptu}
+Do proměnné totaltime je uložen CPU čas procesu, který je získán součtem hodnot utime, stime, cutime a cstime ze souboru /proc/<pid>/stat.
+\begin{lstlisting}[style=AshSimpleStyle]
+sfile=/proc/$1/stat
+if [ ! -r $sfile ]; then
+echo "pid $1 not found in /proc" ; exit 1;
+fi
+totaltime=$(cat $sfile| awk '{sum=$14+$15+$16+$17; print sum}')
+\end{lstlisting}
+Následujícím výpočtem je v proměnné seconds získána dobu běhu procesu v sekundách.\begin{lstlisting}[style=AshSimpleStyle]
+uptime=$(cat /proc/uptime | tr '.' ' ' | awk '{print $1}')
+starttime=$(cat $sfile| awk '{print $22}')
+seconds=$((uptime-(starttime/CLK_TCK)))
+\end{lstlisting}
+Cpuusage obsahuje průměrné využití procesoru za daný časový interval uvedený v tisícinách procent.
+\begin{lstlisting}[style=AshSimpleStyle]
+cpuusage=$((totaltime*1000/seconds))
+\end{lstlisting}
+
+Aby výsledky testu měly vypovídající výpovědní hodnotu, byl STB s běžícím logovacím démonem nechán zapnutý po dobu jedné hodiny a až následně byl spuštěn skript.
+
+\subsection*{Výsledky měření}
+Výsledky vyšly poměrně překvapivě vítězně pro Rsyslog, který spotřebovává 0,042~\%~CPU výkonu oproti 0,051~\%, kterými CPU vytěžuje Syslogd. Hodnoty jsou takřka identické, oba procesy vytěžují CPU minimálně. Zarážející je, že tak komplexní program, jako je Rsyslog je méně náročný, než spartánský Busy box Syslogd, který je přibližně tisíci řádkovým v jazyku C napsaným programem.
+
+\subsection{Paměťová náročnost}
+TODO
 
 \begin{conclusion}
+Výsledkem této práce je nové logovací řešení postavené na moderním logovacím démonu Rsyslog. Bylo naprogramováno API pro vzdálenou konfiguraci, jež dovoluje technikům měnit konfiguraci logování. V práci také vznikly dva moduly pro Rsyslog. Jeden z nich mmsevrewrite slouží ke změně severit zpráv, jež je chybějící a přitom žádanou funkcí Rsyslogu~\cite{rsysMailingList} a proto je v plánu ho v budoucnu nabídnout do upstreamu.
+
+Touto prací dostal zadavatel do rukou nástroj, kterým může díky vhodné konfiguraci razantně snížit objem logů putujících na servery.
+
+Veškerý kód napsaný v této práci byl psán s ohledem na přenositelnost a proto je možné ho  nasadit na různých typech set-top boxů s OS Linux.
 
 \end{conclusion}
 
@@ -782,14 +876,17 @@ TODO test využití CPU, old vs new.
 	\item[API] Application Programming Interface
 	\item[ASH] Almquist Shell
 	\item[CPU] Central Processing Unit
-	\item[dmd] Download manager daemon
+	\item[DMD] Download manager daemon
 	\item[GPU] Graphics processing unit
 	\item[OS] Operating system
 	\item[PC] Personal computer
-	\item[RAM] Random Access memory
+	\item[PID] Process ID
+	\item[MTU] Maximum Transmission Unit
+	\item[RAM] Random Access Memory
 	\item[RFC] Request for Comments
 	\item[SDK] Software Development Kit
-	\item[STB] Set-top box
+	\item[STB] Set-top Box
+	\item[VFS] Virtual File System
 \end{description}
 
 \chapter{Obsah přiloženého CD}

@@ -62,6 +62,7 @@
 
 \RequirePackage{etoolbox}
 
+
 \AtEndEnvironment{table}{\gdef\there@is@a@table{}}
 \AtEndDocument{\ifdefined\there@is@a@table\label{tab:was:used:in:doc}\fi}
 \DeclareRobustCommand{\listoftablescond}{\@ifundefined{r@tab:was:used:in:doc}{}{\listoftables*}}
