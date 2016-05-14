@@ -7,33 +7,30 @@ sfile=/proc/$1/stat
 if [ ! -r $sfile ]; then echo "pid $1 not found in /proc" ; exit 1; fi
 
 start=$(cat $sfile| awk '{sum=$14+$15+$16+$17; print sum}')
-time ./genMessages.sh 2> time_out && \
+time ./genMessages.sh 2> timeOut && \
 stop=$( cat $sfile| awk '{sum=$14+$15+$16+$17; print sum}')
 
-sys_time=$(cat time_out | grep sys | awk '{print $3}' | tr -d 's')
-user_time=$(cat time_out | grep user | awk '{print $3}' | tr -d 's')
-cat time_out
-rm -rf time_out
+sysTime=$(cat timeOut | grep sys | awk '{print $3}' | tr -d 's')
+userTime=$(cat timeOut | grep user | awk '{print $3}' | tr -d 's')
+cat timeOut
+rm -rf timeOut
 
-total_jiffies=$((stop-start))
-echo \$total_jiffies $total_jiffies
+clockTicks=$((stop-start))
+echo \$clockTicks $clockTicks
 
-get_mili_sec()
+getMilisec()
 {
-	 l_sec=$(echo $1 | cut -d'.' -f1)
-	 l_mili_sec=$(echo $1 | cut -d'.' -f2)
-	 echo $((l_mili_sec*10+l_sec*1000))
+	 sec=$(echo $1 | cut -d'.' -f1)
+	 miliSec=$(echo $1 | cut -d'.' -f2)
+	 echo $((miliSec*10+sec*1000))
 }
 
-sys_time_mili_sec=$(get_mili_sec "$sys_time")
-echo \$sys_time_mili_sec $sys_time_mili_sec
-user_time_mili_sec=$(get_mili_sec "$user_time")
-echo \$user_time_mili_sec $user_time_mili_sec
-time_mili_sec=$((sys_time_mili_sec+user_time_mili_sec))
-echo \$time_mili_sec $time_mili_sec
+sysTimeMiliSec=$(getMilisec "$sysTime")
+echo \$sysTimeMiliSec $sysTimeMiliSec
+userTimeMiliSec=$(getMilisec "$userTime")
+echo \$userTimeMiliSec $userTimeMiliSec
+timeMiliSec=$((sysTimeMiliSec+userTimeMiliSec))
+echo \$timeMiliSec $timeMiliSec
 
-
-echo Realny cas scriptu MILISEC $time_mili_sec
-
-cpuusage=$((total_jiffies*1000*1000/time_mili_sec))
-echo cpuusage: $cpuusage
+cpuUsage=$((clockTicks*1000*1000/timeMiliSec))
+echo CPU Usage: $cpuUsage
