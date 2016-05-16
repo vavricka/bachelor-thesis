@@ -168,7 +168,7 @@ Cílem je upravit logovací řešení pro set-top box EKT DID7006mTF~\cite{ekt70
 Původním záměrem bylo rozdělit požadavky na základní a rozšířené. Nakonec zadavatel rozhodl, že všechny níže zmíněné požadavky jsou základní a tedy jejich implementace je nutná pro splnění práce.
 
 \section*{Snížení objemu logů}
-Je žádoucí umožnit snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. A to tak, že zadavatel bude schopen nadefinovat pro každou komponentu úroveň severity zpráv, od které mají být posílány na server. Výchozí nastavení dodá zadavetel.
+Cílem tohoto požadavku je umožnit snížit objem zasílaných logů z důvodu přílišného zatížení sítě a serverových disků. A to tak, že zadavatel bude schopen nadefinovat pro každou komponentu úroveň severity zpráv, od které mají být posílány na server. Výchozí nastavení dodá zadavetel.
 
 \section*{Vzdálená konfigurace}
 Technické řešení musí být schopno za běhu pomocí SHELL-ového API měnit maximální severitu zpráv pro jednotlivé komponenty a dále toto API musí umožnit nastavit výchozí severitu, která se použije pro komponenty ji nemají explicitně nastavenou. Takto změněné nastavení musí být perzistentní i po restartu STB. Výchozí nastavení se obnoví až po factory resetu. API navrhne dle své libovůle sám řešitel.
@@ -317,10 +317,10 @@ Za použití tohoto démonu není možné splnit některé stěžejní technick�
 
 \subsection{Aplikační server}
 Aplikační server se stará o business logiku, například poskytuje uživateli práva přehrát daný kanál nebo film, komunikuje s javascriptovou aplikací, která se vůči němu autorizuje a podobně.
-AS není možné v této práci jakkoli měnit. Je nutné zachovat kompatibilitu.
+AS není možné v této práci jakkoli měnit a je nutné zachovat kompatibilitu.
 
 \subsection{Servery pro sběr logů}
-Provozovatel vlastní cluster serverů pro sběř logů od desetitisíců STB. Běží na nich Rsyslog nakonfigurovaný pro co nejvyšší propustnost.
+Provozovatel vlastní cluster serverů pro sběř logů od desetitisíců STB. Běží na nich logovací démon Rsyslog nakonfigurovaný pro co nejvyšší propustnost. Stejně jako v případě AS není v této práci možné měnit jeho implementaci.
 
 \section{Nové řešení}
 Prvně je nutno zvážit, zda problém řešit na straně serveru nebo set-top boxu. Vhodnou konfigurací logovacího démonu na straně serveru, který by nepotřebné zprávy zavčas rozpoznal, zahodil a dále nezpracovával by bylo možné splnit požadavek na snížení zátěže serverových disků. Přetížení sítě se takto vyřešit ale nedá a proto bylo toto řešení zavrhnuto.
@@ -354,7 +354,9 @@ Rsyslog podporuje tzv. modulární systém~\cite{rsysModules}, který poskytuje 
 	\caption[Diagram nového řešení]{Diagram nového řešení}
 \end{figure}
 
-Na obrázku 3.2 je pro lepší představu znázorněna nová podoba řešení. Dojde k nahrazení logovacího démonu Syslogd modernějším Rsyslogem. Dále přibude rozhraní (SHELL API) pro umožnění změny konfigurace skrze internet.
+Podoba nového řešení je znázorněna na obrázku 3.2.
+
+V kapitole 3.2.1 bylo rozhodnuto nahrazení logovacího démonu Syslogd modernějším Rsyslogem. Dále přibude rozhraní (na obrázku SHELL API), jež bude umožněnovat vzdálenou změnu konfigurace Rsyslogu. 
 
 To je možné díky zadavatelově komponentě DMD, jež je pro tuto práci black boxem, která dovoluje na základě dotazů GET a POST spouštět příkazy s root oprávněním v SHELLu a tedy i volat funkce nového API.
 
@@ -365,16 +367,17 @@ Dále je popsán vývoj modulů pro Rsyslog a jsou představeny dva vlastní nap
 Kapitolu zakončuje návrh API pro vzdálenou konfiguraci Rsyslogu a popis jeho implementace.
 
 \section{Sestavení a instalace Rsyslogu na STB}
-Rsyslog není součástí SDK a tak jej bylo nutné a všechny knihovny na kterých závisí (zlib, libestr, libee, liblogging a libfastjson) zkompilovat a posléze nainstalovat na STB. K tomu bude použit systém Gu.
+Rsyslog není součástí SDK a tak jej bylo nutné a všechny knihovny na kterých závisí (zlib, libestr, libee, liblogging a libfastjson) zkompilovat a posléze nainstalovat na STB. K tomu byl použit systém Gu.
 
 \subsection{Buildovací systém Gu}
 Gu je buildovací systém pro linuxová embedded zařízení, který si klade za cíl zjednodušit a urychlit buildovací proces. Gu využívá balíčkovací systém pacman (převzatý z Arch Linuxu) a nástroj scratchbox2 sloužící k zjednodušení cross-kompilace. Tyto 2 nástroje jsou skryty v konzolovém přikazu \uv{gu}, kterým se celé Gu ovládá.
 
 \subsection{PKGBUILD}
-Jedná se o shellový script obsahující informace potřebné pro sestavení jednotlivých aplikací systémem Gu. Jeho syntaxe je podrobně popsána v odstavci níže.
+Jedná se o shellový script obsahující informace potřebné pro sestavení jednotlivých aplikací systémem Gu. Jeho syntaxe je podrobně popsána v podkapitole 4.1.3.
+\clearpage 
 
 \subsection{Sestavení a instalace aplikací}
-Jako příklad zde uvádím soubor PKGBUILD pro sestavení a instalaci Rsyslogu. V podobném duchu jsou napsány i skripty pro ostatní aplikace a knihovny.
+Jako ukázka je níže zobrazen obsah souboru PKGBUILD pro sestavení a instalaci Rsyslogu. V podobném duchu jsou napsány i skripty pro ostatní aplikace a knihovny.
 \begin{lstlisting}[style=PKGBuildStyle]
 pkgname=rsyslog
 pkgver=8.16.0-nangu-0.3
@@ -405,18 +408,18 @@ package() {
   \item [pkgver:] Verze balíčku (měla by se shodovat s verzí sestavované aplikace).
   \item [arch:] Pole specifikující architektury cílových systémů.
   \item [depends:] Pole názvů balíčků, které musí být nainstalovány před spuštěním tohoto softwaru.
-  \item [source:] Seznam souborů nutných pro sestavení balíčku. Soboury mohou odkazovat na lokální úložiště, nebo na vzdálený server, v tom případě se se skript postará o jejich stažení. Komprimované soubory skript automaticky rozbalí.
+  \item [source:] Seznam souborů nutných pro sestavení balíčku. Soboury mohou odkazovat na lokální úložiště nebo na vzdálený server (v tom případě se skript postará o jejich stažení). Komprimované soubory skript automaticky rozbalí.
   \item [md5sum:] Pole kontrolních součtů pro každý specifikovaný \uv{source}.
   \item [build():] Nepovinná funkce obsahující příkazy vedoucí ke konfiguraci a sestavení aplikace.
   \item [package():] Povinná funkce instalující soubory. Funkce je spouštěna až po exekuci ostatních nepovinných funkcí.
   \item [pkgdir:] Proměnná obsahující umístění kořenového adresáře instalované aplikace.
 \end{description}
 
-Po vstoupení do adresáře obsahujícím zdrojové kódy aplikace a skript PKGBUILD stačí zadat příkaz \uv{gu build}, čímž se uvede do chodu celý skript. Nejdříve se inicializují proměnné, posléze se vykoná funkce build() a nakonec package(), čímž by měl (pokud nedojde k žádné chybě) vzniknout v umístění \uv{pkdir} balíček s přeloženou aplikací.
-Příkazem \uv{gu install <název-vzniklého-balíčku.tar.xz>} nainstalujeme balíček do SDK.
+Po vstoupení do adresáře obsahujícího zdrojové kódy aplikace a skript PKGBUILD stačí zadat příkaz \uv{gu build}, čímž se uvede do chodu celý skript. Nejdříve se inicializují proměnné, posléze se vykoná funkce build() a nakonec package(), čímž (pokud nedojde k žádné chybě) vznikne v umístění \uv{pkdir} balíček s přeloženou aplikací.
+Příkazem \uv{gu install <název-vzniklého-balíčku.tar.xz>} se balíček nainstaluje do SDK.
 
 \section{Konfigurace Rsyslogu}
-Rsyslog se řídí podle pravidel specifikovaných v konfiguračním souboru /etc/rsyslog.conf. Za použití tzv. compatibility módu~\cite{Rsyslog-comp-mode} podporuje syntaxi známou z dříve na linuxu hojně užívaného démonu sysklogd. Níže je uveden příklad konfiguračního souboru syslog.conf~\cite{Syslog-conf} pro sysklogd. Na levo je možno specifikovat kritéria pro filtraci zpráv podle jejich severity a facility. Na pravo je pak umístění, kam zprávy odesílat.
+Rsyslog se řídí pravidly specifikovanými v konfiguračním souboru rsyslog.conf. Zapnutím tzv. compatibility módu~\cite{Rsyslog-comp-mode} je umožněna podpora syntaxe známá z dříve na linuxu hojně užívaného démonu Sysklogd. Níže je uveden příklad konfiguračního souboru syslog.conf~\cite{Syslog-conf} pro Sysklogd. Na levo je možno specifikovat kritéria pro filtraci zpráv podle jejich severity a facility. Na pravo je pak definováno cílové umístění zpráv.
 
 \begin{lstlisting}[style=AshStyle]
 *.=crit;kern.none            /var/adm/critical
@@ -426,23 +429,23 @@ kern.crit                    /dev/console
 kern.info;kern.!err          /var/adm/kernel-info
 \end{lstlisting}
 
-Díky této podpoře je možno velice snadno migrovat z Syslogd na Rsyslogd.
-Pro využití i jiných než základních funkcí Rsyslogu je nutno k nakonfigurování pravidel použít syntaxi jazyku Rainerscript, který je z toho důvodu v této práci použit.
+Díky této podpoře je možno velice snadno migrovat z démonu Sysklogd na Rsyslog.
+Ovšem pro využití i jiných než základních funkcí Rsyslogu je nutno k nakonfigurování pravidel použít syntaxi jazyku Rainerscript, který je z toho důvodu v této práci použit.
 
 \subsection{Rainerscript}
 Rainerscript~\cite{RainerScript} je skriptovací jazyk navržený ke správě síťových událostí a dále ke konfiguraci softwaru, pro který je používán.
-Tento jazyk je totiž teoreticky použitelný v ruzných typech softwarů, nicméně v době psaní této práce byl vyvíjen a reálně pužíván pouze v Rsyslogu.
+Tento jazyk je totiž teoreticky použitelný v ruzných typech softwarů, nicméně v době psaní této práce byl reálně pužíván pouze v Rsyslogu.
 
-Jedná se o netypový jazyk, který poskytuje podporu regulárních výrazů~\cite{RainerScriptPropertyReplacer} a má nadefinované užitečné funkce především pro práci s textovými řetězci.
+Jedná se o netypový jazyk, který poskytuje podporu regulárních výrazů~\cite{RainerScriptPropertyReplacer} a obsahuje užitečné funkce především pro práci s textovými řetězci.
 Podrobnosti jsou k nalezení v dokumentu s formální definicí jazyka~\cite{RainerScriptFormalDefinition}.
 
 \subsection{rsyslog.conf}
-Níže je uvedena ukázka konfiguračního souboru za použití jazyku RainerScript, kde jsou předvedeny základní konstrukce používané při jeho tvorbě. Tato ukázka by měla primárně sloužit zadvateli pro porozumění konfiguračního souboru a jako možný návod pro budoucí úpravy.
+V tomto oddílu je uvedena ukázka konfiguračního souboru napsaného jazykem RainerScript, kde jsou předvedeny základní konstrukce používané při jeho tvorbě. Tato ukázka by měla primárně sloužit zadvateli pro porozumění konfiguračního souboru a jako možný návod pro budoucí úpravy.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 module(load="NazevModulu")
 \end{lstlisting}
-Na začátku souboru je možné načíst různé moduly poskytující doplňující funkce. Příkladem může být modul imklog čtoucí zprávy z kernelu nebo omfwd umoňující posílat zprávy skrze protokoly UDP nebo TCP. Je nutno poznamenat, že některé moduly nejsou ve výchozím nastavení kompilovány spolu s Rsyslogem a je proto nutno přidat příkazu compile parametr $-$$-$enable$-$<název\_modulu>.
+Na začátku souboru je možné načíst různé moduly poskytující doplňující funkce. Příkladem může být modul imklog čtoucí zprávy z kernelu nebo modul omfwd umoňující posílat zprávy skrze protokoly UDP nebo TCP. Je nutno poznamenat, že některé moduly nejsou ve výchozím nastavení kompilovány spolu s Rsyslogem a je proto nutno přidat příkazu compile parametr $-$$-$enable$-$<název\_modulu>.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 set $!Promenna="hodnota";
@@ -454,13 +457,13 @@ Pomocí klíčovích slov set a unset je možné deklarovat a rušit proměnné.
 template(name="template-name" type="string" string="<%pri%>%TIMESTAMP:::date-rfc3164% %$!macaddr% %syslogtag% id=%$!counter%%msg%\n"
 	)
 \end{lstlisting}
-Šablony definují podobu zpráv. Do proměnné string lze vložit libovolné textové řetězce. Proměnná mezi dvojicí znaků procento je nahrazena jejich obsahem. Použity mohou být vlastní lokální proměnné a nebo tzv. replacement proměnné, vztahující se typicky ke zprávě, ve kterých je uložena např. severita nebo například čas odeslání. Nejdůležitější je proměnná msg, kde je uložen text zprávy.
+Šablony definují podobu zpráv. Do proměnné string lze vložit libovolné konstantní textové řetězce a dále proměnné, jež se vkládají mezi dvojici znaků procento. Použity mohou být vlastní deklarované proměnné nebo tzv. replacement proměnné, které jsou definovány dokumentací Rainerscriptu. Příkladem replacement proměnné může být \uv{app-name} obsahující název komponenty jež vygenerovala zprávu nebo \uv{msg} obsahující text zprávy. 
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 action(template="template-name" type="omfwd" Target="192.168.1.10" Port="5514" Protocol="udp" )
 \end{lstlisting}
 
-Pomocí akcí se volají jednotlivé moduly. Ty mohou mít různé parametry, které upravují jejich chování. V ukázce výše se volá modul omfwd sloužící k posílání zpráv skrze síť. Parametry specifikují konkrétní IP a port sítě, typ protokolu a název šablony, která upravuje formát zpráv.
+Pomocí akcí se volají jednotlivé moduly. Ty mohou mít různé parametry, které upravují jejich chování. V ukázce výše je volán modul Omfwd sloužící k posílání zpráv skrze protokoly UDP nebo TCP. Parametry specifikují konkrétní IP a port sítě, typ protokolu a název použité šablony.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 if $programname == 'solid' and $syslogseverity > 5
@@ -470,33 +473,33 @@ then {
 }
 \end{lstlisting}
 	
-Použití podmínky if je zřejmé z ukázky výše. V podmínce if se obvykle volají různé akce.
+RainerScript podporuje podmíněný příkaz \uv{if}, jež má podobnou syntaxi jako je tomu v jazycích C nebo Java.
+V podmínce \uv{if} se obvykle volají různé akce.
 
-Veškerý text za symbolem \uv{\#} až do konce řádky je považován za komentář.
+Jednořádkové komentáře začínají za symbolem \uv{\#}.
 \\
 \\
-Nyní po obeznámení se základní syntaxí Rainerscriptu je možno popsat fungování zachytávání jednotlivých zpráv. Ty imaginárně putují skrze kód rsyslog.conf odshora dolů, kde prochází skrze podmínky a akce (které je eventuelně upravují nebo např. zapisují do souborů) a to až do doby, než narazí na klíčové slovo stop nebo na poslední řádek souboru.
+Nyní po obeznámení se základní syntaxí RainerScriptu je možno popsat fungování zachytávání jednotlivých zpráv. Ty imaginárně putují odshora dolů skrze kód v souboru rsyslog.conf, kde prochází skrze podmínky a akce (které je eventuelně upravují nebo např. zapisují do souborů) a to až do doby, než narazí na klíčové slovo \uv{stop} nebo na poslední řádek souboru.
 
 \subsubsection*{Rsyslog Queues}
-
 \begin{figure}[ht]
 	\centering
 	\includegraphics[scale=0.4]{images/rsyslog-queues}
 	\caption[Tok zpráv v Rsyslogu]{Tok zpráv v Rsyslogu~\cite{RsyslogQueues}}
 \end{figure}
 
-Princip fungování front v Rsyslogu je znázorněn na obrázku 4.1. Zprávy (ať už lokální nebo ze vzdáleného zdroje putující do Rsyslogu např. skrze UDP) vstupují do Rsyslogu  na obrázku zleva, kde jsou předzpracovány a putují do Main Queue. V dalším kroku jsou zprávy tříděny podle pravidel specifikovaných v rsyslog.conf a putují do jednotlivých Action Queues. Následně proběhne finální zpracování zpráv a opouštějí Rsyslog skrze výstupní modul ať už zápisem do lokálního souboru nebo např. předáním jinému procesu.
+Princip fungování front v Rsyslogu je znázorněn na obrázku 4.1. Zprávy (ať už lokální nebo pocházející ze vzdáleného zdroje) vstupují do Rsyslogu  na obrázku zleva, kde jsou předzpracovány a putují do Main Queue. V dalším kroku jsou zprávy tříděny podle pravidel specifikovaných v rsyslog.conf a putují do jednotlivých Action Queues. Následně proběhne finální zpracování zpráv a opouštějí Rsyslog skrze výstupní modul ať už zápisem do lokálního souboru nebo např. předáním jinému procesu.
 
-Všechny zprávy tedy projdou nejprve skrze Main Queue a poté skrze libovolný počet Action Queues. Je nutno zmínit, že každá akce obsahuje vlastní frontu, ve které zprávy čekají na zpracování. V případě, že v akci žádná fronta žádoucí, stačí nastavit typ fronty jako Direct mode.
+Všechny zprávy tedy projdou nejprve skrze Main Queue a poté skrze libovolný počet Action Queues. Je nutno zmínit, že každá akce obsahuje vlastní frontu, ve které zprávy čekají na zpracování. V případě, že v akci není žádná fronta žádoucí, stačí nastavit typ fronty jako Direct mode.
 
 Existují totiž čtyři módy front. Speciálním (a výchozím) je Direct mode. Direct Queues ve skutečnosti nejsou frontami. Neobsahují totiž žádný buffer a zprávy rovnou přeposílají dál. Vhodné jsou například při zápisu logů do souboru na lokální úložiště.
 
 Druhým typem jsou In-Memory Queues, které udržují zprávy v bufferu v operační paměti. Výhodou je vysoká rychlost a nevýhodou zase hrozba ztráty dat v případě neočekávaného pádu systému.
-Existují dva podtypy In-Memory front. Můžou být implementovány formou spojového seznamu (LinkedList queue) nebo za použití pole ukazatelů na zprávy ve frontě (FixedArray) s předem pevně určeným počtem prvků pole. FixedArray mode je nejrychlejší ze všech módů a je vhodný pro případy, kdy se očekává pouze malý počet zpráv ve frontě. Naproti tomu LinkedList Queue dynamicky alokuje místo v paměti pro každou zprávu a je výhodný například na serverech, kde se očekává velký tok zpráv.
+In-Memory fronty mohou být implementovány buď formou spojového seznamu (LinkedList Queue) a nebo za použití pole ukazatelů na zprávy (FixedArray) s předem pevně určeným počtem prvků pole. FixedArray mode je nejrychlejší ze všech módů a je vhodný pro případy, kdy se očekává pouze malý počet zpráv ve frontě. Naproti tomu LinkedList Queue dynamicky alokuje místo v paměti pro každou zprávu a je výhodný například na serverech, kde se očekává velký tok zpráv.
 
 Třetí typ front představují Disk Queues, které jak z názvu vyplývá používají disk jako vyrovnávací paměť. Využití najdou v případech kdy si žádáme vysokou soplehlivost. Jejich nevýhodou je pomalost limitovaná rychlostí perzistentních úložišť.
 
-Disk-Assisted Memory Queues fungují stejně jako In-Memory Queues a navíc v případě potřeby (kterou může být nedostatek místa v paměti nebo očekávané náhle vypnutí systému) dokáží obsah fronty nebo její část přesunout na disk. Používají chytrý algoritmus, který při malém vytížení vůbec nepoužívá Disk Queues. V případě vyčerpání kapacity In-Memory fronty se algoritmus postará o přesun části zpráv do diskové fronty.
+Disk-Assisted Memory Queues fungují stejně jako In-Memory Queues a navíc v případě potřeby dokáží obsah fronty nebo její část přesunout na disk. Používají chytrý algoritmus, který při malém vytížení vůbec nepoužívá Disk Queues. Až v případě vyčerpání kapacity In-Memory fronty se algoritmus postará o přesun části zpráv do diskové fronty.
 
 \subsubsection*{Rate-limiting za použití Rsyslog Queues}
 Původní řešení trápil neduh, kdy k vyprázdnění bufferu docházelo až s nově příchozí zprávou, což mělo za následek, že v případě zaplněného bufferu a následující delší odmlky nově příchozích zpráv mohlo dojít k velkému zpoždení odeslání zpráv v ten moment uložených v bufferu. Tento problém se nasazením Rsyslogu a použitím jeho sofistikovaných front vyřeší.
@@ -504,7 +507,7 @@ V této kapitole je popsána implementace fronty, která má za cíl škrtit tok
 
 Původní řešení bylo postavené na démonu BusyBox Syslogd doplněné o vlastní implementaci rate-limitingu zpráv a fungovalo následovně. Všechny příchozí zprávy putovaly do fronty o fixní velikosti 128 kB. V případě, kdy tok odchozích zpráv překročil 150 kbit/s nebo počet zpráv ve frontě přesáhl 800, byly nově příchozí zprávy zahozeny.
 
-Rsyslog neumožňuje nastavení maximálního toku sítě, avšak poskytuje možnost nastavit pro frontu tyto parametry:
+Rsyslog přímo neumožňuje nastavení maximálního toku sítě, avšak poskytuje možnost nastavit pro frontu tyto parametry:
 \begin{description}
   \setlength\itemsep{-1ex}
   \item [Queue.Size:] Maximální počet zpráv ve frontě.
@@ -524,14 +527,14 @@ Nyní je třeba zjistit jakou hodnotu nastavit parametru Dequeueslowdown. Pomoc�
 	\item $slowdown=\frac{1~sekunda}{počet~zpráv}=\frac{1~000~000}{125}*batchsize~=~8~000~*~10~=~80~000~[\mu$$s]$
 \end{description}
 Ještě zbývá zvolit typ fronty, kde kvůli důrazu na nízké využití zdrojů byla zvolena implementace používající fixní pole ukazatelů na zprávy.
-Výsledný kód pro akci s In-memory frontou s nastaveným rate-limitingem vypadá následovně:
+Výsledný kód pro akci s In-Memory frontou s nastaveným rate-limitingem vypadá následovně:
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 action(Type="omfwd" Target="192.168.1.10" port="5514" Queue.Size="800" Queue.Dequeueslowdown="80000" Queue.Dequeuebatchsize="10" Queue.Type="FixedArray" )
 \end{lstlisting}
 
 \subsection{Razítkování zpráv}
-Požadavkem zadavatele bylo značit všechny zprávy vzestupnou řadou čísel kvůli rozpoznání případného výpadku některých zpráv.
-Byl pro to použit modul mmsequence~\cite{RsyslogMmsequence}, který byl nastaven jako je ukázáno v kódu níže.
+Požadavkem zadavatele bylo značit všechny zprávy vzestupnou řadou čísel kvůli rozpoznání případného výpadku některé ze zpráv.
+K tomu byl použit modul mmsequence~\cite{RsyslogMmsequence}, který byl nastaven jako je ukázáno v kódu níže.
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 module(load="mmsequence")
 action(	type="mmsequence"
@@ -539,11 +542,11 @@ action(	type="mmsequence"
 		to="1048576" # 2^20
 		var="$!counter" )
 \end{lstlisting}
-Proměnné \uv{\$!counter} je tak přiřazeno číslo \uv{1} a s každou další příchozí zprávou se číslo zvýší o \uv{1} dokud nenarazí na maximální hodnotu specifikovanou parametrem \uv{to}, kdy je číslo vyresetováno na původní hodnotu \uv{1}.
-Tato proměnná je následně používána v šablonách a je tak připojena k tělu každé zprávy.
+Proměnná \uv{\$!counter} začíná na čísle \uv{1} a s každou další příchozí zprávou se zvýší o \uv{1} dokud nenarazí na maximální hodnotu specifikovanou parametrem \uv{to}, kdy je číslo vyresetováno na původní hodnotu \uv{from}.
+Tato proměnná je použita v šablonách a je tak připojena k tělu každé zprávy.
 
 \subsection{Formát logů}
-Požadavkem zadavatele je, aby zprávy měly identický formát, jako tomu bylo u původního řešení. Důvodem je, že zprávy ze STB sbírá vzdálený server, který očekává daný formát.
+Požadavkem zadavatele je, aby zprávy měly identický formát, jako tomu bylo u původního řešení. Důvodem je nutnost zachování kompatibility se vzdáleným serverem sbírajícím zprávy ze STB, který vyžaduje pevně daný formát.
 \\
 \\
 Vzor zprávy:
@@ -554,21 +557,21 @@ Formát:
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 <PRI><RFC3164 date> <STB mac address> <component>: <id=NUM>  <message>
 \end{lstlisting}
-
-Je možno si povšimnout, že vzorová zpráva začíná datem a přitom formát zprávy obsahuje na prvním místě číslo PRI a až poté následuje datum. Hodnota PRI totiž není viditelná a slouží logovacímu démonu, který z ní dokáže vypočítat severity a facility zprávy.
+Požadovaného formátu bylo dosaženo vhodným nastavením šablony, které je zobrazeno v oddíle 4.2.2.
+\clearpage
 
 \section{Moduly pro Rsyslog}
 Rsyslog poskytuje podporu tzv. modulů, které mohou zásadně rozšiřovat jeho množinu funkcí. Tyto moduly jsou obvykle napsány v jednom C souboru. Pro jejich zprovoznění je třeba náležitě upravit Makefile a zkompilovat Rsyslog se zapnutou podporou pro ně.
 
-Moduly se dělí na 6 základních kategorií, zde zmíním 3 nejpoužívanější:
+Moduly se dělí na 6 základních kategorií, zde jsou zmíněny 3 nejpoužívanější:
 
 \begin{description}
-  \item [Output Modules:] Výstupní moduly umožňují posílat zprávy na různé cíle. Je tak možno implementovat například modul, který dokáže odesílat zprávy do nějaké exotické databáze, kterou Rsyslog v základu nezná. Jako příklad výstupního modulu zmíním ommail, což je modul sloužící k posílání zpráv skrze mail.
-  \item [Input Modules:] Vstupní moduly, jak název napovídá, umožňují přijímat zprávy z různých zdrojů. Hojně používaný je imklog sbírající zprávy z linuxového jádra nebo imudp přijímající zprávy skrze UDP protokol.
-  \item [Message Modification Modules:] Moduly, které modifikují obsah zprávy. Jako příklad uvedu v této práci použitý modul mmsequence, který generuje podle zadaných kritérií číselné řady.
+  \item [Output Modules:] Výstupní moduly umožňují posílat zprávy na různé cíle. Je tak možno implementovat například modul, který dokáže odesílat zprávy do nějaké exotické databáze, kterou Rsyslog v základu nezná. Příkladem výstupního modulu je ommail sloužící k posílání zpráv skrze mail.
+  \item [Input Modules:] Vstupní moduly, jak název napovídá, umožňují přijímat zprávy z různých zdrojů. Hojně používaný je imklog sbírající zprávy z linuxového jádra nebo imudp přijímající zprávy skrze protokol UDP.
+  \item [Message Modification Modules:] Moduly, které modifikují obsah zprávy. Příkladem je v této práci použitý modul mmsequence, který generuje číselné řady.
 \end{description}
 
-V této práci byly naprogramovány dva moduly, oba z kategorie Message Modification Modules. V následujícím textu je popsán jejich účel a způsob použití. Implementaci zde v práci neuvádím, protože se většina kódu skládá z volání Rsyslog API a kód každého z nich obsahuje stovky řádků.
+V této práci byly naprogramovány dva moduly, oba z kategorie Message Modification Modules. V následujícím textu je popsán jejich účel a způsob použití. Implementace není v práci uvedena, protože se většina kódu skládá z volání API Rsyslogu a zdrojový kód každého z modulů obsahuje stovky řádků.
 
 \subsection{Modul mmdelstr}
 Tento modul slouží ke smazání zadaného podřetězce z těla zprávy.
@@ -583,7 +586,7 @@ action(type="mmdelstr" stringtobedeleted="Some string")
 Modul má pouze jeden parametr \uv{stringtobedeleted}, kterým se specifikuje podřetězec, který má být smazán. V případě neexistence takového podřetězce zůstává zpráva netknutá. V případě výskytu vícero takových podřetězců je smazán pouze první.
 
 \subsection{Modul mmsevrewrite}
-Mmsevrewrite dokáže měnit severitu zadané zprávy. Rsyslog v základu funkci s takovou schopností nenabízí, protože se jedná o vzácný požadavek. Modul je použit v této práci pro konverzi zpráv pocházejících z aplikace používající s Rsyslogem jinak nekompatibilní množinu severit.
+Mmsevrewrite dokáže měnit severitu zpráv. Rsyslog v základu funkci s takovou schopností nenabízí, jelikož se jedná o neobvyklý požadavek. Modul je v této práci použit  pro konverzi zpráv pocházejících z aplikace používající s Rsyslogem jinak nekompatibilní množinu severit.
 \\
 \\
 Použití:
@@ -592,13 +595,13 @@ module(load="mmsevrewrite")
 action(type="mmsevrewrite" severity="debug")
 \end{lstlisting}
 
-Modul obsahuje pouze jeden parametr \uv{severity}, kterým se určuje nová severita zprávy. V případě zadání neplatné severity Rsyslog zaloguje chybovou hlášku a upravovaná zpráva zůstane v původním stavu.
+Modul obsahuje pouze jeden parametr \uv{severity}, kterým se určuje nová severita zprávy. V případě zadání neplatné severity zaloguje Rsyslog chybovou hlášku a upravovaná zpráva zůstane v původním stavu.
 
 \subsection{Postprocessing zpráv}
-Zadavatel si přeje vytvoření ukázek pravidel pro RainerScript, které budou sloužit jako vzor, podle kterých si sám v budoucnu vytvoří sadu vlastních pravidel.
+Zadavatel požaduje vytvoření tří určitých ukázek pravidel pro RainerScript, které budou sloužit jako vzory, podle kterých si v budoucnu vytvoří sadu vlastních pravidel.
 
 \subsubsection{Zahazování zpráv podle typu komponenty}
-Pravidlo, které rozpozná zprávy podle zadané komponenty a obsahu zprávy a ty následně zahodí.
+Pravidlo, které rozpozná zprávu (podle typu komponenty jež ji vygenerovala a obsahu jejího textu) a v případě shody ji zahodí.
 \\
 \\
 Implementace pravidla:
@@ -609,7 +612,7 @@ $msg contains "Player_GetState" then
 	stop
 }
 \end{lstlisting}
-Pokud zpráva pochází z komponenty \uv{solid} a obsahuje zmíněný podřetězec, klíčové slovo stop okamžitě zahodí v ten moment zpracovávanou zprávu.
+Pokud zpráva pochází z komponenty \uv{solid} a obsahuje zmíněný podřetězec, klíčové slovo \uv{stop} okamžitě zahodí v ten moment zpracovávanou zprávu.
 \\
 \subsubsection{Převod severit}
 Některé aplikace běžící na STB používají jinou množinu severit, než s jakými pracuje Rsyslog a navíc nejsou v hlavičce zprávy, nýbrž v jejím těle.
@@ -637,7 +640,7 @@ else if $msg contains "mDEBUG: " then
 	action(type="mmsevrewrite" severity="info")
 }
 \end{lstlisting}
-Zprávy obsahující nesprávně nastavené severity je možno opravit podle výše zmíněného pravidla. Bylo totiž vypozorováno, že ony postižené zprávy obsahují podřetězec ve formátu \uv{m<SEVERITY>: }. Stačí pak na danou zprávu zavolat akci mmsevrewrite s parametrem severity vyplněným podle převodní tabulky severit.
+Zprávy obsahující nesprávně nastavené severity je možno opravit podle výše zmíněného pravidla. Bylo totiž vypozorováno, že ony postižené zprávy obsahují podřetězec ve formátu \uv{m<SEVERITY>: }. Stačí pak na danou zprávu zavolat akci mmsevrewrite s parametrem severity vyplněným podle převodní tabulky z obr. 4.1.
 
 \subsubsection{Smazání podřetězce z těla zprávy}
 Zprávám pocházejícím z komponenty solid je třeba smazat zadaný podřetězec.
@@ -667,16 +670,15 @@ Výhodou prvního způsobu je, že nehrozí nechtěné přepsání jiných čás
 A proto byl zvolen 2. způsob řešení s tím, že zadavatel bude poučen o nutnosti dodržovat určité zásady při měnění konfiguračního souboru, aby nemohlo dojít k přepsání nesprávných částí souboru.
 
 \subsection{Výběr implementačních nástrojů}
-Jazyky jako Perl nebo Python se jeví jako ideální pro napsánání skriptu na zpracování textu. Tyto ani jiné podobné jazyky ovšem nejsou součástí SDK a zadavatel si nepřeje jejich instalaci z důvodu omezené paměti a nevalného výkonu embedded zařízení. Proto byla zvolena již na STB přítomná BusyBox implementace SHELLu nesoucí název ASH. Ta sice neposkytuje tak elegantní syntaxi a nenabízí tolik schopností jako moderní SHELL-ové jazyky jako např. BASH, ale i přesto je možné jejím použitím spolu se základními UNIX-ovými nástroji API naprogramovat.
+Jazyky jako Perl nebo Python se jeví jako ideální pro napsánání skriptu na zpracování textu. Tyto ani jiné podobné jazyky ovšem nejsou součástí SDK a zadavatel si nepřeje jejich instalaci z důvodu omezené paměti a omezeného výkonu embedded zařízení. Proto byl zvolen již na STB přítomný příkazový procesor ASH. Ten sice neposkytuje tak elegantní syntaxi a nenabízí tolik schopností jako moderní SHELL-ové jazyky jako např. BASH, ale i přesto je možné jeho použitím spolu se základními UNIX-ovými nástroji API naprogramovat.
 
 \subsection{Rozhraní skriptu}
-První možností je napsat API ve formě scriptu, který přijímá jednotlivé názvy komponent a jim příslušící maximální povolenou severitu jako parametry.
+První zvažovanou variantou je napsat API ve formě skriptu, který přijímá jednotlivé názvy komponent a jim příslušící maximální povolenou severitu jako parametry.
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 set_log_verbosity.sh [component1 severity1] ...
 \end{lstlisting}
-
-Jako druhá možnost připadá v úvahu skript, který čte seznam jednotlivých komponent a maximálních povolených severit ze souboru, který má následující formát:
+Druhou možností je skript, který čte seznam jednotlivých komponent a maximálních povolených severit ze souboru, který má následující formát:
 
 \begin{lstlisting}[style=RainerScriptSimpleStyle]
 component1  = DEBUG
@@ -684,12 +686,11 @@ componentXY = INFO
 ...
 DEFAULT     = INFO
 \end{lstlisting}
-
 V implementaci byl nakonec použit první způsob pro jeho jednoduší obsluhu a navíc s jeho použitím pro zadavatele odpadá starost o další konfigurační soubor.
 
 \subsection{Implementace API}
 Skript na vstupu očekává sudý počet parametrů, kde každý sudý parametr je název komponenty a liché parametry slouží pro definování severit pomocí jejich číselných hodnot.
-Skript vyhledá v konfiguračním souboru rsyslog.conf řádek s danou komponentou a přenastaví maximální povolenou severitu. Skript kontrolojue správnost vstupních parametrů pro zabránení neočekávaného chování programu.
+Skript vyhledá v konfiguračním souboru rsyslog.conf řádek s danou komponentou a přenastaví maximální povolenou severitu. Skript kontroluje správnost vstupních parametrů kvůli zabránení neočekávaného chování programu. Skript nakonec restartuje Rsyslog kvůli načtení nové konfigurace.
 
 
 \chapter{Testování}
@@ -728,7 +729,7 @@ Pro účely testování byla nakonfigurována lokální síť jakožto simulace 
 \end{figure}
 
 \subsection*{Zhodnocení}
-Jak je vidět z prvních dvou grafů (obr. 5.1 a 5.2), nové řešení postavené na Rsyslogd přijíma méně logů. Je to způsobeno jeho konfigurací, v níž je nastaveno pravidlo (viz kapitola 4.3.3.1), kterým se zahazují určité nepotřebné zprávy. Na STB totiž běží aplikace, již zadavatel nemá možnost upravit, která loguje mimo jiné i nepotřebné zprávy. V původním řešením podobné pravidlo nebylo možné jakkoliv nastavit.
+Jak je vidět z prvních dvou grafů (obr. 5.1 a 5.2), nové řešení postavené na démonu Rsyslog přijíma méně logů. Je to způsobeno jeho konfigurací, v níž je nastaveno pravidlo (viz kapitola 4.3.3.1), kterým se zahazují určité nepotřebné zprávy. Na STB totiž běží aplikace, již zadavatel nemá možnost upravit, která loguje mimo jiné i nepotřebné zprávy. V původním řešením podobné pravidlo nebylo možné jakkoliv nastavit.
 Dle Wiresharku tak nové řešení v průměru přijíma 8,6 paketů za sekundu oproti 9 paketům za sekundu v původním řešení.
 
 Na třetím grafu (obr. 5.3) je pro zajímavost znázorněno využití linky při použití nového řešení po nastavení filtrace zpráv od komponenty solid.
@@ -877,14 +878,12 @@ Aby výsledky testu měly vypovídající výpovědní hodnotu, byl STB s běž�
 Z měření bylo zjištěno, že Syslogd vytěžuje CPU z 0,051~\% a Rsyslogu stačí v průměru pouze 0,042~\%~CPU výkonu. Z tohoto zjištění tak vyplývá, že Rsyslog je velice nenáročný co se nároků na zdroje CPU týče, jeho chod tak neovlivní ostatní aplikace běžící na STB a zadavatel ho může bez obav nasadit.
 
 \subsection{Paměťová náročnost}
-Množství procesem využívané paměti je možné v systémech postavených na linuxovém jádru zjistit např. ze souboru /proc/<pid>/status, kde proměnná VmRSS představuje velikost reálně používané paměti daným procesem.
+Množství procesem využívané paměti je v systémech postavených na linuxovém jádře možné zjistit např. ze souboru /proc/<pid>/status, kde proměnná VmRSS představuje velikost reálně používané paměti daným procesem.
 
 \subsection*{Výsledky měření}
-Využití paměti za obvyklého běhu STB je konstantní na hodnotě okolo 1~300~kB v případě Rsyslogu a 1~100~kB u Syslogd.
+Využití paměti za obvyklého běhu STB se pohybuje konstantně na hodnotě okolo 1~300~kB v případě Rsyslogu a 1~100~kB u Syslogd.
 
-V momentě spuštění skriptu pro generování extrémního počtu zpráv se využití paměti zvedne v obou případech na hodnotu okolo 1~600~kB a tato hodnota zůstává neměnná i nadále po skončení skriptu.
-
- Fakt, že využití paměti po skončení skriptu v případě Rsyslogu neklesne je překvapující, protože by se očekávalo, že po vyprázdnění bufferu se místo v paměti uvolní. Jedná se však o navýšení o pouhých 300~kB a proto se zjišťování příčin tato práce nevěnuje.
+V momentě spuštění skriptu pro generování extrémního počtu zpráv se využití paměti zvedne v obou případech na hodnotu okolo 1~600~kB a tato hodnota zůstává nadále neměnná i po skončení skriptu.
 
 Z výsledků vyplývá, že nové řešení spotřebovává takřka identické množství paměti jako řešení původní. Využití paměti ani během testování extrémních podmínek nepřesáhlo 2 MB a vzhledem k tomu, že velikost operační paměti je 512 MB, není třeba se obávat jejího nedostatku.
 
@@ -913,15 +912,16 @@ Díky použití Rsyslogu může zadavatel v budoucnu zvážit nahrazení stávaj
 \chapter{Seznam použitých zkratek}
 \begin{description}
 	\item[API] Application Programming Interface
+	\item[AS] Application Server
 	\item[ASH] Almquist Shell
 	\item[CPU] Central Processing Unit
 	\item[DMD] Download manager daemon
 	\item[GPU] Graphics processing unit
 	\item[IPTV] Internet Protocol Television
-	\item[OS] Operating system
+	\item[MTU] Maximum Transmission Unit
 	\item[PC] Personal computer
 	\item[PID] Process ID
-	\item[MTU] Maximum Transmission Unit
+	\item[OS] Operating system
 	\item[RAM] Random Access Memory
 	\item[RFC] Request for Comments
 	\item[RSS] Resident Set Size
