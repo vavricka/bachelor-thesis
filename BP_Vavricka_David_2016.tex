@@ -131,7 +131,7 @@ Dále děkuji firmě Nangu.TV za umožnění vzniku této bakalářské práce. 
 
 Hlavním cílem je přepracovat současné logovací řešení a přidat mu podporu vzdáleně měnit jeho konfiguraci, a umožnit tak snížit vytížení sítě.
 
-Na základě analýzy byl nasazen logovací démon Rsyslog, pro nějž byli naprogramovány dva moduly, dále bylo naprogramováno API umožňující změnu konfigurace logování a byly napsány podpůrné skripty.
+Na základě analýzy byl nasazen logovací démon Rsyslog, pro nějž byly naprogramovány dva moduly, dále bylo naprogramováno API umožňující změnu konfigurace logování a byly napsány podpůrné skripty.
 
 V závěru práce bylo nové řešení otestováno na reálném hardware, čímž bylo demonstrováno splnění požadavků a příznivé provozní vlastnosti.}
 \abstractEN{This Bachelor’s thesis deals with analysis, design and implementation of a new logging solution for EKT DID7006mTF set-top box.
@@ -408,7 +408,7 @@ package() {
   \item [pkgver:] Verze balíčku (měla by se shodovat s verzí sestavované aplikace).
   \item [arch:] Pole specifikující architektury cílových systémů.
   \item [depends:] Pole názvů balíčků, které musí být nainstalovány před spuštěním tohoto softwaru.
-  \item [source:] Seznam souborů nutných pro sestavení balíčku. Soboury mohou odkazovat na lokální úložiště nebo na vzdálený server (v tom případě se skript postará o jejich stažení). Komprimované soubory skript automaticky rozbalý.
+  \item [source:] Seznam souborů nutných pro sestavení balíčku. Soboury mohou odkazovat na lokální úložiště nebo na vzdálený server (v tom případě se skript postará o jejich stažení). Komprimované soubory skript automaticky rozbalí.
   \item [md5sum:] Pole kontrolních součtů pro každý specifikovaný \uv{source}.
   \item [build():] Nepovinná funkce obsahující příkazy vedoucí ke konfiguraci a sestavení aplikace.
   \item [package():] Povinná funkce instalující soubory. Funkce je spouštěna až po exekuci ostatních nepovinných funkcí.
@@ -878,7 +878,7 @@ Z měření bylo zjištěno, že Syslogd vytěžuje CPU z 0,051~\% a Rsyslogu st
 Množství procesem využívané paměti je v systémech postavených na linuxovém jádře možné zjistit např. ze souboru /proc/<pid>/status, kde proměnná VmRSS představuje velikost reálně používané paměti daným procesem.
 
 \subsection*{Výsledky měření}
-Využití paměti za obvyklého běhu STB se pohybuje na hodnotě okolo 1~300~kB v případě Rsyslogu a 1~100~kB u Syslogd.
+Využití paměti se za obvyklého běhu STB pohybuje na hodnotě okolo 1~300~kB v případě Rsyslogu a 1~100~kB u Syslogd.
 
 V momentě spuštění skriptu pro generování extrémního počtu zpráv se využití paměti zvedne v obou případech na hodnotu okolo 1~600~kB a tato hodnota zůstává nadále neměnná i po skončení skriptu.
 
