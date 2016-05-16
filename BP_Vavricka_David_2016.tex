@@ -131,16 +131,16 @@ Dále děkuji firmě Nangu.TV za umožnění vzniku této bakalářské práce. 
 
 Hlavním cílem je přepracovat současné logovací řešení a přidat mu podporu vzdáleně měnit jeho konfiguraci a umožnit tak snížit vytížení sítě.
 
-Na základě analýzy byl nasazen nový logovací démon Rsyslog, pro nějž byly naprogramovány dva moduly, dále bylo naprogramováno API umožňující změnu konfigurace logování a byly napsány podpůrné skripty.
+Na základě analýzy byl nasazen logovací démon Rsyslog, pro nějž byly naprogramovány dva moduly, dále bylo naprogramováno API umožňující změnu konfigurace logování a byly napsány podpůrné skripty.
 
 V závěru práce bylo nové řešení otestováno na reálném hardware, čímž bylo demonstrováno splnění požadavků a příznivé provozní vlastnosti.}
 \abstractEN{This Bachelor’s thesis deals with analysis, design and implementation of a new logging solution for EKT DID7006mTF set-top box.
 
 The main goal of this thesis is to redesign the current logging solution and to add functionality to change logging configuration remotely to allow to reduce amount of network load.
 
-Based on the results of the analysis was deployed Rsyslog logging daemon and were developed two Rsyslog modules, a new API for remote configuration change and some subsidiary scripts.
+Based on the results of the analysis Rsyslog logging daemon was deployed and two Rsyslog modules were developed, in addition a new API for configuration change and some subsidiary scripts were developed as well.
 
-The new solution was tested on real hardware where were demonstrated accomplishment of all desired goals and good running characteristics.}
+The new solution was tested on real hardware where accomplishment of all desired goals and good running characteristics were demonstrated.}
 \placeForDeclarationOfAuthenticity{V~Praze}
 \declarationOfAuthenticityOption{4} %volba Prohlášení (číslo 1-6)
 \keywordsCS{logování zpráv, logovací démoni, Rsyslog, set-top boxy, vestavěné systémy, Linux}
@@ -204,7 +204,7 @@ Protokol především specifikuje podobu zpráv a způsob jejich přenosu po sí
 \subsection{The BSD syslog Protocol - RFC 3164}
 Až přibližně po dvaceti letech od vzniku protokolu Syslog (v roce 2001) sepsal Chris Lonvick dokument RFC3146~\cite{RFC3164} popisující daný protokol. Do té doby existovala velká spousta v detailech se lišících implementací, což mělo v jistých případech za následek nekompatibilitu.
 
-Ještě v dnešní době je možno nalézt systémy s logovacím řešením, které specifikuje tento devatenáctistránkový dokument. Nicméně čím dál častěji je nahrazován jeho následníkem, kterým je RFC 5424.
+Ještě v dnešní době je možno nalézt systémy s logovacím řešením, které specifikuje tento devatenáctistránkový dokument. Nicméně čím dál častěji je nahrazován svým následníkem, kterým je RFC 5424.
 
 \subsection{The Syslog Protocol - RFC 5424}
 Oficiální standard vznikl až s příchodem protokolu RFC 5424, který světu představil v roce 2009 jeho autor Rainer Gerhards. Počet stránek se rozrostl na 37 a došlo k některým zásadním a velice užitečným změnám.
@@ -300,11 +300,11 @@ Kapitolu zakončuje analýza řešení jednotlivých technických požadavků a 
 \end{description}
 
 \subsection{Runtime prostředí}
-Na STB běží OS GNU/Linux s BusyBox sadou aplikací, která nahrazuje standardní GNU shellové utility. BusyBox aplikace jsou díky své malé velikosti vhodnější pro embedded zařízení. Na druhou stranu neposkytují všechny funkce a možnosti nastavení plnohodnotných GNU Core Utilities.
+Na STB běží OS GNU/Linux se sadou aplikací BusyBox, která nahrazuje standardní shellové utility GNU. Aplikace BusyBoxu jsou díky své malé velikosti vhodnější pro embedded zařízení. Na druhou stranu neposkytují všechny funkce a možnosti nastavení plnohodnotných GNU Core Utilities.
 
 \subsubsection{Browser}
 Browser je jednoduchý internetový prohlížeč dodaný výrobcem STB.
-V něm běží v Javascriptu zadavatelem napsaná aplikace poskytující uživatelské rozhraní. Mimo to také naslouchá zprávám z aplikačního serveru, na jejichž základě může provádět akce, a to včetně generování POST či GET requestu pro démon dmd.
+V něm běží v Javascriptu zadavatelem napsaná aplikace poskytující uživatelské rozhraní. Mimo to také naslouchá zprávám z aplikačního serveru, na jejichž základě může provádět akce, a to včetně generování POST či GET requestu pro démon Dmd.
 Tato javascriptová aplikace spolu s dalším podpogramem nesoucím název Player generují velké množství logů. Tyto logy nepoužívají standardizovanou množinu severit dle dokumentu RFC 3164, ale svou vlastní s ní nekompatibilní. Logovací démon ovšem očekává zprávy právě podle standardu zmíněného dokumentu. Implementaci Browseru ani Playeru nemůže zadavatel měnit a proto je třeba nekompatibilitu vyřešit pomocí logovacího démonu.
 
 \subsubsection{Servisní komponenta dmd}
@@ -701,7 +701,7 @@ Vždy je porovnáváno nové řešení postavené na Rsyslogu oproti původnímu
 \section{Testovací prostředí a nástroje}
 
 \subsection{WireShark}
-Tento nástroj slouží jako analyzér síťového provozu. Dokáže v reálném čase zachytávat informace o paketech putujících po síti a ty následně vyzobrazit v grafu, čehož je v oddílech 5.1 a 5.2 využito.
+Tento nástroj slouží jako analyzér síťového provozu. Dokáže v reálném čase zachytávat informace o paketech putujících po síti a ty následně vyzobrazit v grafu. Všechny grafy v této kapitole jsou vygenerovány tímto nástrojem.
 
 \subsection{Testovací infrastruktura}
 Pro účely testování byla nakonfigurována lokální síť jakožto simulace reálných serverů provozovatele. Jako server pro zachytávání zpráv z STB byl použit notebook Apple Macbook Pro, na kterém byl nakonfigurován logovací démon Syslog-ng.
