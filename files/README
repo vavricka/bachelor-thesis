@@ -1,0 +1,32 @@
+rsyslog.conf je funkcni configurak ovsem pro verzy rsyslogu 8.16.0-nangu-0.3
+
+pri pouziti posledni verze rsyslogu z githubu je treba pozmenit rsyslog.conf podle vzoru ze souboru "rsyslog-new.conf-just-sample"
+
+byl totiz nahrazen plugin "mmsevrewrite" rozsahlejsim "mmpropertyreplacer".
+
+Doporucuji diffnout rsyslog.conf a rsyslog-new.conf-just-sample
+
+
+
+################ Mozna uzitecne poznamky:
+
+########COMPILE UNDER UBUNTU
+autoreconf -fvi
+./configure --disable-uuid --enable-mmpropertyreplacer --enable-mmdelstr
+make
+sudo make install
+
+#########Logger usage - usefull for logging debugging
+logger -p local0.alert ahoj
+logger -p local3.info ahoj
+
+#########Watchdog off
+killall solid_browser
+sleep 2
+wget -O - http://localhost:8765/watchdog/disable
+
+#########Run Rsyslog on Ubuntu
+sudo -i
+export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib
+/usr/local/sbin/rsyslogd -d
+

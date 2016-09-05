@@ -1,0 +1,113 @@
+#Import modules
+module(load="imuxsock")		#Provides support for local system logging.
+module(load="imklog")		#Provides kernel logging support.
+module(load="mmsequence")	#Provides ability count messages
+module(load="mmdelstr")		# Nangu-plugin; provides ability delete specifes substring form msg.
+module(load="mmpropertyreplacer")	# Nangu-plugin; provides ability rewrite specified severity in msg.
+
+#For better performance
+main_queue(queue.type="Direct")
+
+#MAC-address (is set during startup by init-script)
+set $!macaddr="00-00-00-00-00-00";
+
+#Templates
+template(name="local-template" type="string"
+	string="%TIMESTAMP:::date-rfc3164% %$!macaddr% %syslogtag% id=%$!counter%%msg%\n"
+	)
+
+template(name="udp-template" type="string"
+	string="<%pri%>%TIMESTAMP:::date-rfc3164% %$!macaddr% %syslogtag% id=%$!counter%%msg%\n"
+	)
+
+#Set local-template template as default template
+$ActionFileDefaultTemplate local-template
+
+#Outchannels
+$outchannel oc_messages, /var/log/messages, 512000, /mnt/hdd_1/log-rotate.sh 20
+
+#menitelne pomoci shell api. nastavuje maximalni moznou severitu pro dane komponenty
+#napr. pro "$syslogseverity > 6" se zahodi vsechny zpravy sev 7 (DBG)
+#nebo: pro "$syslogseverity > 5" se zahodi vsechny zpravy sev 7 (DBG) a sev 6 (INF) ...
+
+#Do not remove nor chane following comment; is used by set_log_verbosity.sh 
+#LOG_VERBOSITY_SETUP
+if $programname == 'solid' and $syslogseverity > 7
+then { stop }
+
+if $programname == 'browser' and $syslogseverity > 7
+then { stop }
+
+# Po odkomentovani lze nastavit defaultni maximalni povolenou
+# Severitu pro vsechny vyse nedefinovane komponenty.
+# -------------------------
+#else
+#if $syslogseverity > 5
+#then {
+#	stop
+#}
+
+# 1. pravidlo - Zahazování zpráv podle typu komponenty
+if $programname == 'solid' and $msg contains "Player_GetState" then
+{
+	stop
+}
+
+# 2. pravidlo - Smazání podřetězce z těla syslog zprávy
+if $programname == 'solid' and $msg contains \
+":[../common/stbmediaapi.cpp:notificationFromPlayer:1978]: INFO: " then
+{
+	action(type="mmdelstr" \ 
+	stringtobedeleted=":[../common/stbmediaapi.cpp:notificationFromPlayer:1978]: INFO: ")
+}
+
+#3. pravidlo - Převod severit & Smazání podřetězce z těla syslog zprávy
+if $programname == 'solid' and \
+	$msg contains " :[stbhal.cpp:debug:520]: INFO:" then
+{
+	action(type="mmdelstr" stringtobedeleted=":[stbhal.cpp:debug:520]: INFO: ")
+	
+	if $msg contains "mTRACE: " then
+	{
+		action(type="mmpropertyreplacer" severity="debug")
+	}
+	else if $msg contains "mDEBUG: " then
+	{
+		action(type="mmpropertyreplacer" severity="info")
+	}
+	else if $msg contains "mINFO: " then
+	{
+		action(type="mmpropertyreplacer" severity="notice")
+	}
+	else if $msg contains "mWARN: " then
+	{
+		action(type="mmpropertyreplacer" severity="warning")
+	}
+	else if $msg contains "mERROR: " then
+	{
+		action(type="mmpropertyreplacer" severity="err")
+	}	
+} 
+
+#4. mmpropertyreplacer  sample -> all messages will have app-name == ahoj and severity err.
+action(type="mmpropertyreplacer" app-name="ahoj" severity="err")
+
+#5. mmpropertyreplacer  sample -> all messages will have app-name == zdar
+action(type="mmpropertyreplacer" app-name="zdar" )
+
+# For complete specification look at rsyslog/contrib/mmpropertyreplacer/README
+
+#Counter
+action(
+            type="mmsequence"
+            from="1"
+            to="1048576"   # 2^20
+            var="$!counter"
+        )
+
+# ##### LOCAL #######
+:omfile:$oc_messages
+	
+# ##### UDP   ########
+*.* action(template="udp-template" type="omfwd" Target="192.168.1.10" Port="5514" \
+Protocol="udp" queue.size="800" queue.type="FixedArray" queue.dequeuebatchsize="10" queue.dequeueslowdown="80000" )
